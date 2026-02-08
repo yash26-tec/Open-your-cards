@@ -407,6 +407,8 @@
 
         <div class="row" style="justify-content:space-between">
           <button class="btn danger" id="leaveRoom">Leave</button>
+          <!-- ✅ NEW: host can free stuck slot -->
+          <button class="btn ghost" id="kickP2" style="display:none;">Kick P2</button>
           <button class="btn selected" id="startGame" disabled>Start Game</button>
         </div>
 
@@ -755,7 +757,10 @@
         throw new Error("Could not create room. Try again.");
       }
 
-      // ✅ JOIN: onDisconnect + stale reclaim + session reclaim (final)
+      // ✅ JOIN (REAL FIX):
+      // - session reclaim works in waiting + playing
+      // - stale reclaim works in waiting + playing
+      // - STALE_MS reduced so stuck slot clears fast
       async function joinRoom({roomId, uid, name, session}){
         const rid = extractRoomIdFromInput(roomId);
         if(!rid) throw new Error("Please enter Room code (example: AB12CD) OR paste full link.");
@@ -764,7 +769,7 @@
         const pre = await get(r);
         if(!pre.exists()) throw new Error("Room not found");
 
-        const STALE_MS = 60 * 1000; // 60 sec
+        const STALE_MS = 15 * 1000; // ✅ 15 sec only
 
         const res = await runTransaction(r, (doc) => {
           if(!doc) return;
@@ -797,12 +802,11 @@
           const p2session = doc.players?.p2?.session || "";
           const p2last = Number(doc.players?.p2?.lastSeen || 0);
 
-          // same device reclaim while waiting
-          const sameSessionReclaim = !!p2uid && !!p2session && (p2session === session) && doc.status === "waiting";
-          // stale reclaim while waiting
-          const staleReclaim = !!p2uid && doc.status === "waiting" && (now - p2last > STALE_MS);
+          const sameSessionReclaim = !!p2uid && !!p2session && (p2session === session);
+          const staleReclaim = !!p2uid && (!p2last || (now - p2last > STALE_MS));
 
-          if(p2uid && !sameSessionReclaim && !staleReclaim) return; // abort (full)
+          // if occupied and not reclaim => full
+          if(p2uid && !sameSessionReclaim && !staleReclaim) return; // abort
 
           // join/reclaim as p2
           doc.players.p2.uid = uid;
@@ -914,7 +918,6 @@
         onDisconnect(playerPath).set({ uid:"", name:"", session:"", lastSeen:0 }); // p2 disconnect -> slot free
       }
 
-      // heartbeat
       presenceTimer = setInterval(async () => {
         try{
           await RoomAPI.patchRoom(rid, (doc) => {
@@ -1081,6 +1084,9 @@
 
       const bothJoined = !!(room.players.p1.uid && room.players.p2.uid);
       el("startGame").disabled = !(bothJoined && client.role === "p1");
+
+      // ✅ show Kick only for host and when p2 exists
+      el("kickP2").style.display = (client.role === "p1" && !!room.players?.p2?.uid) ? "inline-block" : "none";
 
       if(room.status === "waiting"){
         setScreen("screenLobby");
@@ -1371,6 +1377,32 @@
       });
     }
 
+    // ✅ NEW: Kick P2 (host)
+    async function kickP2Flow(){
+      if(client.role !== "p1" || !client.roomId) return;
+      if(!confirm("Kick Player 2 and free the slot?")) return;
+
+      try{
+        await RoomAPI.patchRoom(client.roomId, (doc) => {
+          doc.players.p2 = { uid:"", name:"", session:"", lastSeen:0 };
+          doc.status = "waiting";
+          doc.idx = 0;
+
+          doc.state.last = {p1:"—",p2:"—"};
+          doc.state.nhieAnswered = {p1:false,p2:false};
+          doc.state.nhieTurn = "p1";
+
+          doc.state.pickLast = {p1:"—",p2:"—"};
+          doc.state.pickAnswered = {p1:false,p2:false};
+          doc.state.pickTurn = "p1";
+
+          return doc;
+        });
+      }catch(e){
+        alert(e?.message || "Failed to kick");
+      }
+    }
+
     // ---------------------------
     // Manage Sheet
     // ---------------------------
@@ -1419,6 +1451,7 @@
 
     el("startGame").addEventListener("click", startGameFlow);
     el("leaveRoom").addEventListener("click", leaveRoomFlow);
+    el("kickP2").addEventListener("click", kickP2Flow);
 
     el("copyLink").addEventListener("click", async () => {
       try{
