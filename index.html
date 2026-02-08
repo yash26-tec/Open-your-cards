@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>2P Party Game (Firebase Rooms)</title>
+  <title>2P Party Game (Firebase Rooms) — Final Fixed</title>
   <style>
     :root{
       --bg:#f5f9ff; --card:#ffffff; --stroke:#dbe7ff;
@@ -358,7 +358,7 @@
 
         <div class="grid">
           <div class="hint"><b>Join Room</b></div>
-          <input id="roomIdJoin" placeholder="Room code (e.g. AB12CD)" />
+          <input id="roomIdJoin" placeholder="Room code OR paste full link" />
           <input id="myNameJoin" placeholder="Your name" />
           <button class="btn" id="btnJoinRoom">Join Room</button>
         </div>
@@ -521,13 +521,17 @@
 
       <div id="adminLogin">
         <div class="hint">Password required</div>
+
         <form autocomplete="off" onsubmit="return false;">
+          <input type="text" style="display:none" autocomplete="username">
+          <input type="password" style="display:none" autocomplete="new-password">
+
           <div class="row">
             <input id="adminPass"
                    type="password"
                    placeholder="Password"
                    name="admin_pass__no_fill"
-                   autocomplete="off"
+                   autocomplete="new-password"
                    inputmode="text"
                    autocapitalize="none"
                    autocorrect="off"
@@ -582,15 +586,12 @@
   </div>
 
   <script type="module">
-    // Firebase (CDN ESM)
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
     import {
-      getDatabase, ref, onValue, off, runTransaction, serverTimestamp,
-      onDisconnect, set
+      getDatabase, ref, onValue, off, get, runTransaction, serverTimestamp
     } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 
-    // ✅ Your config
     const firebaseConfig = {
       apiKey: "AIzaSyDDMj_YT8NRN-RYpksqjGOUTF5RzM5AgOM",
       authDomain: "power2-91fdc.firebaseapp.com",
@@ -613,7 +614,29 @@
     const show = (id) => el(id).classList.add("show");
     const hide = (id) => el(id).classList.remove("show");
     const setText = (id, v) => el(id).textContent = v;
+
     const clampName = (s, fallback) => (String(s||"").trim() || fallback).slice(0, 24);
+
+    function cleanRoomId(s){
+      return (String(s||"").toUpperCase().trim().replace(/[^A-Z0-9]/g, "")).slice(0, 10);
+    }
+
+    // ✅ NEW: handle "paste full link" OR "code"
+    function extractRoomIdFromInput(raw){
+      const s = String(raw || "").trim();
+      if(!s) return "";
+      // try URL first
+      if(s.includes("://") || s.startsWith("www.")){
+        try{
+          const u = new URL(s.startsWith("www.") ? ("https://" + s) : s);
+          const fromParam = u.searchParams.get("room") || "";
+          if(fromParam) return cleanRoomId(fromParam);
+        }catch{
+          // ignore parse error, fallback to clean
+        }
+      }
+      return cleanRoomId(s);
+    }
 
     function genRoomId(){
       const chars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
@@ -621,7 +644,20 @@
       for(let i=0;i<6;i++) out += chars[Math.floor(Math.random()*chars.length)];
       return out;
     }
+
     function deepClone(x){ return JSON.parse(JSON.stringify(x)); }
+
+    function shuffle(arr){
+      for(let i=arr.length-1;i>0;i--){
+        const j = Math.floor(Math.random()*(i+1));
+        [arr[i],arr[j]] = [arr[j],arr[i]];
+      }
+    }
+    function buildOrder(len){
+      const order = Array.from({length:len}, (_,i)=>i);
+      shuffle(order);
+      return order;
+    }
 
     // ---------------------------
     // Questions (Manage) - local
@@ -661,25 +697,13 @@
       localStorage.setItem(QKEY, JSON.stringify(questions));
     }
 
-    function shuffle(arr){
-      for(let i=arr.length-1;i>0;i--){
-        const j = Math.floor(Math.random()*(i+1));
-        [arr[i],arr[j]] = [arr[j],arr[i]];
-      }
-    }
-    function buildOrder(len){
-      const order = Array.from({length:len}, (_,i)=>i);
-      shuffle(order);
-      return order;
-    }
-
     // ---------------------------
     // Room doc model
     // ---------------------------
     function makeNewRoomDoc({roomId, hostUid, hostName, q}){
       return {
         roomId,
-        status: "waiting", // waiting | playing
+        status: "waiting",
         hostUid,
         players: {
           p1: { uid: hostUid, name: hostName },
@@ -688,7 +712,7 @@
         mode: "nhie",
         idx: 0,
         order: buildOrder((q?.nhie||[]).length),
-        questions: q || {nhie:[], pick:[]}, // ✅ stored in room
+        questions: q || {nhie:[], pick:[]},
         state: {
           counts: {p1:0,p2:0},
           last: {p1:"—",p2:"—"},
@@ -704,18 +728,18 @@
     }
 
     // ---------------------------
-    // Firebase Room API (Realtime Database)
+    // Firebase Room API
     // ---------------------------
     const RoomAPI = (() => {
       function roomRef(roomId){ return ref(db, `rooms/${roomId}`); }
 
       async function createRoom({hostUid, hostName, q}){
-        for(let t=0; t<6; t++){
+        for(let t=0; t<8; t++){
           const roomId = genRoomId();
           const r = roomRef(roomId);
 
           const res = await runTransaction(r, (current) => {
-            if(current !== null) return; // abort if exists
+            if(current !== null) return;
             return makeNewRoomDoc({roomId, hostUid, hostName, q});
           }, { applyLocally: false });
 
@@ -726,16 +750,19 @@
         throw new Error("Could not create room. Try again.");
       }
 
-      // ✅ FIXED JOIN LOGIC:
-      // - Allows same uid to rejoin
-      // - Blocks only if p2 is occupied by SOMEONE ELSE
       async function joinRoom({roomId, uid, name}){
-        const r = roomRef(roomId);
+        const rid = extractRoomIdFromInput(roomId);
+        if(!rid) throw new Error("Please enter Room code (example: AB12CD).");
+
+        const r = roomRef(rid);
+
+        // ✅ pre-check (more reliable + better error)
+        const pre = await get(r);
+        if(!pre.exists()) throw new Error("Room not found");
 
         const res = await runTransaction(r, (doc) => {
-          if(!doc) return; // abort
+          if(!doc) return;
 
-          // rejoin logic
           if(doc.players?.p1?.uid === uid){
             doc.players.p1.name = name || doc.players.p1.name;
             doc.updatedAt = serverTimestamp();
@@ -747,40 +774,37 @@
             return doc;
           }
 
-          // if p2 occupied by someone else -> keep doc unchanged (we'll detect full)
-          if(doc.players?.p2?.uid && doc.players.p2.uid !== uid){
-            return doc;
-          }
+          if(doc.players?.p2?.uid) return; // full => abort
 
-          // join as p2
           doc.players.p2.uid = uid;
           doc.players.p2.name = name;
           doc.updatedAt = serverTimestamp();
           return doc;
         }, { applyLocally: false });
 
-        if(!res.committed || !res.snapshot.exists()){
-          throw new Error("Room not found");
+        if(!res.committed){
+          const snap = await get(r);
+          if(!snap.exists()) throw new Error("Room not found");
+          throw new Error("Room is full");
         }
 
         const doc = res.snapshot.val();
-
-        if(doc.players?.p1?.uid === uid) return { role:"p1" };
-        if(doc.players?.p2?.uid === uid) return { role:"p2" };
-
-        if(doc.players?.p2?.uid) throw new Error("Room is full");
+        if(doc.players?.p1?.uid === uid) return { role:"p1", roomId: rid };
+        if(doc.players?.p2?.uid === uid) return { role:"p2", roomId: rid };
         throw new Error("Join failed");
       }
 
       function subscribeRoom(roomId, cb){
-        const r = roomRef(roomId);
+        const rid = extractRoomIdFromInput(roomId);
+        const r = roomRef(rid);
         const handler = (snap) => cb(snap.exists() ? snap.val() : null);
         onValue(r, handler);
         return () => off(r, "value", handler);
       }
 
       async function patchRoom(roomId, patchFn){
-        const r = roomRef(roomId);
+        const rid = extractRoomIdFromInput(roomId);
+        const r = roomRef(rid);
         const res = await runTransaction(r, (doc) => {
           if(!doc) return doc;
           const next = patchFn(deepClone(doc));
@@ -792,7 +816,9 @@
       }
 
       async function leaveRoom(roomId, uid){
-        const r = roomRef(roomId);
+        const rid = extractRoomIdFromInput(roomId);
+        const r = roomRef(rid);
+
         await runTransaction(r, (doc) => {
           if(!doc) return doc;
 
@@ -800,7 +826,6 @@
           const p2 = doc.players?.p2?.uid;
 
           if(p1 === uid){
-            // host leaves -> delete room
             return null;
           }
           if(p2 === uid){
@@ -823,7 +848,7 @@
         }, { applyLocally: false });
       }
 
-      return { createRoom, joinRoom, subscribeRoom, patchRoom, leaveRoom, roomRef };
+      return { createRoom, joinRoom, subscribeRoom, patchRoom, leaveRoom };
     })();
 
     // ---------------------------
@@ -832,11 +857,9 @@
     const client = {
       uid: "",
       roomId: "",
-      role: "", // p1 or p2
+      role: "",
       room: null,
       unsub: null,
-      // keep a flag so we don’t spam leave calls
-      leftOnce: false
     };
 
     function setScreen(name){
@@ -860,7 +883,7 @@
 
     function buildShareLink(roomId){
       const u = new URL(window.location.href);
-      u.searchParams.set("room", roomId);
+      u.searchParams.set("room", cleanRoomId(roomId));
       return u.toString();
     }
 
@@ -870,7 +893,6 @@
       client.room = null;
       client.roomId = "";
       client.role = "";
-      client.leftOnce = false;
     }
 
     function subscribeRoom(roomId){
@@ -888,48 +910,7 @@
     }
 
     // ---------------------------
-    // Auto cleanup (IMPORTANT FIX)
-    // - onDisconnect: best effort (network drop)
-    // - beforeunload/pagehide: tab close / refresh
-    // ---------------------------
-    async function armAutoCleanup(roomId, role){
-      try{
-        if(!roomId || !role) return;
-
-        // If P2 disconnects unexpectedly -> clear p2
-        if(role === "p2"){
-          const p2Ref = ref(db, `rooms/${roomId}/players/p2`);
-          await onDisconnect(p2Ref).set({ uid:"", name:"" });
-        }
-
-        // If host disconnects -> delete room
-        if(role === "p1"){
-          const roomRef = ref(db, `rooms/${roomId}`);
-          await onDisconnect(roomRef).remove();
-        }
-      }catch(e){
-        // silently ignore (rules/permissions may block onDisconnect in some setups)
-      }
-    }
-
-    async function safeLeaveOnce(){
-      if(client.leftOnce) return;
-      client.leftOnce = true;
-
-      try{
-        if(client.roomId && client.uid){
-          await RoomAPI.leaveRoom(client.roomId, client.uid);
-        }
-      }catch{
-        // ignore
-      }
-    }
-
-    window.addEventListener("pagehide", () => { safeLeaveOnce(); });
-    window.addEventListener("beforeunload", () => { safeLeaveOnce(); });
-
-    // ---------------------------
-    // Render using room.questions (synced)
+    // Render (room.questions is source of truth)
     // ---------------------------
     function getQ(room){
       return room.questions || {nhie:[], pick:[]};
@@ -1029,7 +1010,6 @@
     }
 
     function renderFromRoom(room){
-      // Lobby
       setText("lobbyRoomId", room.roomId);
       setText("lobbyP1", room.players.p1.name || "Waiting…");
       setText("lobbyP2", room.players.p2.name || "Waiting…");
@@ -1049,7 +1029,6 @@
         setScreen("screenGame");
       }
 
-      // Game bits
       setText("gameRoomId", room.roomId);
       setText("gameMeRole", client.role || "—");
 
@@ -1121,33 +1100,32 @@
         client.role = role;
         client.roomId = roomId;
 
-        // ✅ arm auto cleanup right after you enter a room
-        await armAutoCleanup(roomId, role);
-
         setText("topSub", "Room created. Share link and wait for friend.");
         subscribeRoom(roomId);
       }catch(err){
+        console.error(err);
         showHomeError(err?.message || "Failed to create room");
       }
     }
 
     async function joinRoomFlow(roomIdFromUrl){
       showHomeError("");
-      const roomId = (roomIdFromUrl || el("roomIdJoin").value || "").trim().toUpperCase();
+
+      const raw = roomIdFromUrl || el("roomIdJoin").value || "";
+      const roomId = extractRoomIdFromInput(raw);
       const myName = clampName(el("myNameJoin").value, "Player 2");
-      if(!roomId) return showHomeError("Please enter Room code.");
+
+      if(!roomId) return showHomeError("Please enter Room code (example: AB12CD) OR paste full link.");
 
       try{
-        const { role } = await RoomAPI.joinRoom({ roomId, uid: client.uid, name: myName });
+        const { role, roomId: rid } = await RoomAPI.joinRoom({ roomId, uid: client.uid, name: myName });
         client.role = role;
-        client.roomId = roomId;
-
-        // ✅ arm auto cleanup right after you enter a room
-        await armAutoCleanup(roomId, role);
+        client.roomId = rid;
 
         setText("topSub", "Joined room. Waiting for host to start.");
-        subscribeRoom(roomId);
+        subscribeRoom(rid);
       }catch(err){
+        console.error(err);
         showHomeError(err?.message || "Failed to join room");
       }
     }
@@ -1167,6 +1145,7 @@
           doc.questions = q;
           doc.status = "playing";
           doc.mode = doc.mode || "nhie";
+
           const len = doc.mode === "nhie" ? (q.nhie||[]).length : (q.pick||[]).length;
           doc.order = buildOrder(len);
           doc.idx = 0;
@@ -1182,12 +1161,19 @@
           return doc;
         });
       }catch(err){
+        console.error(err);
         showLobbyError(err?.message || "Cannot start");
       }
     }
 
     async function leaveRoomFlow(){
-      await safeLeaveOnce();
+      try{
+        if(client.roomId){
+          await RoomAPI.leaveRoom(client.roomId, client.uid);
+        }
+      }catch(e){
+        console.error(e);
+      }
       cleanupRoom();
       setScreen("screenHome");
     }
@@ -1355,6 +1341,7 @@
       if(unlocked) renderLists();
       el("adminPass").value = "";
       el("adminPass").setAttribute("readonly","readonly");
+      setTimeout(()=>el("adminPass").blur(), 0);
     }
     function closeSheet(){ el("overlay").classList.remove("show"); }
 
@@ -1392,6 +1379,8 @@
 
     el("openAdmin").addEventListener("click", openSheet);
     el("closeSheet").addEventListener("click", closeSheet);
+
+    el("adminPass").addEventListener("pointerdown", ()=> el("adminPass").removeAttribute("readonly"));
     el("adminPass").addEventListener("focus", ()=> el("adminPass").removeAttribute("readonly"));
 
     el("unlock").addEventListener("click", ()=>{
@@ -1464,14 +1453,14 @@
     });
 
     // ---------------------------
-    // Boot (Auth + URL join hint)
+    // Boot
     // ---------------------------
     function bootUI(){
       loadQuestions();
       setScreen("screenHome");
 
       const url = new URL(window.location.href);
-      const roomFromUrl = (url.searchParams.get("room") || "").trim().toUpperCase();
+      const roomFromUrl = cleanRoomId(url.searchParams.get("room") || "");
       if(roomFromUrl){
         el("roomIdJoin").value = roomFromUrl;
         setText("topSub", "Room link opened. Enter your name & Join.");
@@ -1479,8 +1468,8 @@
       }
     }
 
-    // ✅ Anonymous auth
     signInAnonymously(auth).catch((e)=>{
+      console.error(e);
       showHomeError("Auth error: " + (e?.message || "unknown"));
     });
 
@@ -1488,7 +1477,6 @@
       if(!user) return;
       client.uid = user.uid;
       el("authInfo").textContent = "Connected (uid: " + user.uid.slice(0,8) + "…)";
-
       bootUI();
     });
   </script>
