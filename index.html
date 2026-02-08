@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>2P Party Game (Firebase Rooms) — FINAL (AUTO Force-Join ✅)</title>
+  <title>2P Party Game (Firebase Rooms) — FINAL (Invite Link Auto-Join ✅ No Room-Full Ghost ✅)</title>
   <style>
     :root{
       --bg:#f5f9ff; --card:#ffffff; --stroke:#dbe7ff;
@@ -311,7 +311,7 @@
       <div class="titleRow">
         <div>
           <h1>2-Player Party Game</h1>
-          <div class="sub" id="topSub">Firebase realtime rooms enabled ✅</div>
+          <div class="sub" id="topSub">Invite link auto-join ✅ Ghost-free pairing ✅</div>
         </div>
         <button class="btn ghost" id="openAdmin">Manage</button>
       </div>
@@ -327,7 +327,7 @@
       <div class="roomCard">
         <div class="roomTitle">Play with a friend (real-time)</div>
         <div class="centerNote">
-          Create room → share link → friend joins → host starts → live sync.
+          Create room → share link → friend opens link → auto-joins → host starts.
         </div>
 
         <div class="divider"></div>
@@ -341,7 +341,7 @@
         <div class="divider"></div>
 
         <div class="grid">
-          <div class="hint"><b>Join Room</b></div>
+          <div class="hint"><b>Join Room</b> (if you want manually)</div>
           <input id="roomIdJoin" placeholder="Room code (e.g. AB12CD) or paste full link" />
           <input id="myNameJoin" placeholder="Your name" />
           <button class="btn" id="btnJoinRoom">Join Room</button>
@@ -393,8 +393,6 @@
           <button class="btn danger" id="leaveRoom">Leave</button>
 
           <div class="row" style="justify-content:flex-end;flex:1;">
-            <button class="btn danger" id="kickP2" style="display:none;">Kick P2</button>
-            <button class="btn danger" id="forceClearP2" style="display:none;">Force Clear P2</button>
             <button class="btn selected" id="startGame" disabled>Start Game</button>
           </div>
         </div>
@@ -564,7 +562,10 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-    import { getDatabase, ref, onValue, off, get, runTransaction, serverTimestamp, onDisconnect } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
+    import {
+      getDatabase, ref, onValue, off, get, runTransaction,
+      serverTimestamp, onDisconnect, set, push, update, remove
+    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
     import { getAuth, signInAnonymously, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 
     const firebaseConfig = {
@@ -582,20 +583,17 @@
     const db = getDatabase(app);
     const auth = getAuth(app);
 
-    // ✅ FAST anti-ghost timings (reduces "Room full")
-    const LEASE_MS = 8000;       // seat expires quickly
-    const HEARTBEAT_MS = 3000;   // keep alive frequently
-    const STALE_MS = 8000;       // same as lease
-    const MAX_FUTURE = LEASE_MS * 3;
+    // Presence timings (reliable ghost-free)
+    const PRES_HEARTBEAT_MS = 3000;
+    const PRES_STALE_MS = 12000;
 
+    // server time offset
     let serverOffset = 0;
     let offsetReady = false;
 
     onValue(ref(db, ".info/serverTimeOffset"), (snap) => {
       serverOffset = snap.val() || 0;
       offsetReady = true;
-
-      // enable buttons when time sync ready
       const c = document.getElementById("btnCreateRoom");
       const j = document.getElementById("btnJoinRoom");
       if(c) c.disabled = false;
@@ -647,14 +645,13 @@
       return order;
     }
 
-    // session token (stable per device)
+    // per-tab connection token (NOT localStorage; tab close -> new token)
     function makeToken(){ return Math.random().toString(36).slice(2) + "-" + Date.now().toString(36); }
-    const SESSION_KEY = "party_session_token_v1";
-    const sessionToken = localStorage.getItem(SESSION_KEY) || makeToken();
-    localStorage.setItem(SESSION_KEY, sessionToken);
+    const tabToken = makeToken();
 
     // Questions local
     const QKEY = "party_questions_local_v2";
+    const NAMEKEY = "party_name_v1";
     const ADMIN_PASSWORD = "Admin@123";
     const SAMPLE_Q = {
       nhie:[
@@ -685,16 +682,73 @@
     }
     function saveQuestions(){ localStorage.setItem(QKEY, JSON.stringify(questions)); }
 
-    // Room doc
-    function makeNewRoomDoc({roomId, hostUid, hostName, q, hostSession}){
+    // Presence helpers (ghost-free)
+    let presTimer = null;
+    let presRef = null;
+    let presRoomId = "";
+    async function stopPresence(){
+      if(presTimer) clearInterval(presTimer);
+      presTimer = null;
+      if(presRef){
+        try{ await remove(presRef); }catch{}
+      }
+      presRef = null;
+      presRoomId = "";
+    }
+
+    async function startPresence(roomId, name){
+      await stopPresence();
+      const rid = extractRoomIdFromInput(roomId);
+      if(!rid) return;
+
+      const pRoot = ref(db, `presence/${rid}`);
+      presRef = push(pRoot);
+      presRoomId = rid;
+
+      // create presence record
+      await set(presRef, {
+        uid: client.uid,
+        name,
+        tab: tabToken,
+        joinedAt: serverNow(),
+        lastSeen: serverNow()
+      });
+
+      // auto remove when tab disconnects
+      onDisconnect(presRef).remove();
+
+      presTimer = setInterval(async ()=>{
+        try{
+          if(presRef) await update(presRef, { lastSeen: serverNow() });
+        }catch{}
+      }, PRES_HEARTBEAT_MS);
+    }
+
+    async function isConnAlive(roomId, uid, maxAgeMs=PRES_STALE_MS){
+      const rid = extractRoomIdFromInput(roomId);
+      const snap = await get(ref(db, `presence/${rid}`));
+      if(!snap.exists()) return false;
+      const pres = snap.val() || {};
       const now = serverNow();
+      for(const k of Object.keys(pres)){
+        const p = pres[k] || {};
+        if(p.uid === uid){
+          const ls = Number(p.lastSeen || 0);
+          if(ls && (now - ls) <= maxAgeMs) return true;
+        }
+      }
+      return false;
+    }
+
+    // Room doc
+    function makeNewRoomDoc({roomId, hostUid, hostName, q}){
       return {
         roomId,
         status: "waiting",
         hostUid,
         players: {
-          p1: { uid: hostUid, name: hostName, session: hostSession, lastSeen: now, claimedAt: now, leaseUntil: now + LEASE_MS },
-          p2: { uid: "", name: "", session: "", lastSeen: 0, claimedAt: 0, leaseUntil: 0 }
+          p1: { uid: hostUid, name: hostName },
+          p2: { uid: "", name: "" }
         },
         mode: "nhie",
         idx: 0,
@@ -717,108 +771,80 @@
     const RoomAPI = (() => {
       function roomRef(roomId){ return ref(db, `rooms/${roomId}`); }
 
-      async function createRoom({hostUid, hostName, q, session}){
+      async function createRoom({hostUid, hostName, q}){
         for(let t=0; t<10; t++){
           const roomId = genRoomId();
           const r = roomRef(roomId);
           const res = await runTransaction(r, (current) => {
             if(current !== null) return;
-            return makeNewRoomDoc({roomId, hostUid, hostName, q, hostSession: session});
+            return makeNewRoomDoc({roomId, hostUid, hostName, q});
           }, { applyLocally: false });
           if(res.committed) return { roomId, role:"p1" };
         }
         throw new Error("Could not create room. Try again.");
       }
 
-      // ✅ AUTO FORCE-JOIN (NO BUTTON): if "Room full" but lobby is waiting => overwrite p2
-      async function joinRoom({roomId, uid, name, session}){
+      // ✅ stable join: no fake "room full" on txn abort; retry once
+      async function joinRoom({roomId, uid, name}){
         const rid = extractRoomIdFromInput(roomId);
         if(!rid) throw new Error("Enter room code or paste link.");
         const r = roomRef(rid);
 
-        const snap = await get(r);
-        if(!snap.exists()) throw new Error("Room not found");
+        const first = await get(r);
+        if(!first.exists()) throw new Error("Room not found");
 
-        // 1) Normal join attempt
-        const attempt = await runTransaction(r, (doc) => {
-          if(!doc) return;
+        async function tryClaim(){
+          const res = await runTransaction(r, (doc) => {
+            if(!doc) return;
 
-          doc.players ||= {
-            p1:{uid:"",name:"",session:"",lastSeen:0,claimedAt:0,leaseUntil:0},
-            p2:{uid:"",name:"",session:"",lastSeen:0,claimedAt:0,leaseUntil:0}
-          };
+            doc.players ||= { p1:{uid:"",name:""}, p2:{uid:"",name:""} };
+            const p1 = doc.players.p1 || {};
+            const p2 = doc.players.p2 || {};
 
-          const now = serverNow();
+            // rejoin by uid
+            if(p1.uid === uid){
+              doc.players.p1.name = name || doc.players.p1.name;
+              return doc;
+            }
+            if(p2.uid === uid){
+              doc.players.p2.name = name || doc.players.p2.name;
+              return doc;
+            }
 
-          // rejoin by uid
-          if(doc.players.p1.uid === uid){
-            doc.players.p1.name = name || doc.players.p1.name;
-            doc.players.p1.session = doc.players.p1.session || session;
-            doc.players.p1.lastSeen = now;
-            doc.players.p1.leaseUntil = now + LEASE_MS;
-            return doc;
-          }
-          if(doc.players.p2.uid === uid){
-            doc.players.p2.name = name || doc.players.p2.name;
-            doc.players.p2.session = doc.players.p2.session || session;
-            doc.players.p2.lastSeen = now;
-            doc.players.p2.leaseUntil = now + LEASE_MS;
-            return doc;
-          }
+            // claim p2 if empty
+            if(!p2.uid){
+              doc.players.p2.uid = uid;
+              doc.players.p2.name = name;
+              return doc;
+            }
 
-          const p2 = doc.players.p2 || {};
-          const p2uid = String(p2.uid || "");
-          const empty = !p2uid;
+            // occupied => abort
+            return;
+          }, { applyLocally:false });
 
-          const sameDevice = !!p2uid && (p2.session === session) && doc.status === "waiting";
+          if(res.error) throw res.error;
+          return res;
+        }
 
-          const leaseUntil = Number(p2.leaseUntil || 0);
-          const lastSeen = Number(p2.lastSeen || 0);
-
-          const expired = !!p2uid && leaseUntil && leaseUntil < now;
-          const stale = !!p2uid && lastSeen && (now - lastSeen > STALE_MS);
-          const missing = !!p2uid && (!leaseUntil || !lastSeen);
-          const crazyFuture = !!p2uid && leaseUntil > (now + MAX_FUTURE);
-
-          const reclaimable = doc.status === "waiting" && (expired || stale || missing || crazyFuture);
-
-          if(!empty && !sameDevice && !reclaimable) return; // full => abort
-
-          // claim p2
-          doc.players.p2.uid = uid;
-          doc.players.p2.name = name;
-          doc.players.p2.session = session;
-          doc.players.p2.lastSeen = now;
-          doc.players.p2.claimedAt = now;
-          doc.players.p2.leaseUntil = now + LEASE_MS;
-          return doc;
-        }, { applyLocally:false });
-
+        const attempt = await tryClaim();
         if(attempt.committed){
           const doc = attempt.snapshot.val();
           if(doc.players?.p1?.uid === uid) return { role:"p1", roomId: rid };
           return { role:"p2", roomId: rid };
         }
 
-        // 2) AUTO force join fallback (only while waiting)
-        const force = await runTransaction(r, (doc) => {
-          if(!doc) return;
-          if(doc.status !== "waiting") return; // never force during game
+        // committed=false: re-read
+        const latest = await get(r);
+        if(!latest.exists()) throw new Error("Room not found");
+        const d = latest.val();
+        const p2uid = String(d?.players?.p2?.uid || "");
 
-          const now = serverNow();
+        if(!p2uid){
+          const retry = await tryClaim();
+          if(retry.committed) return { role:"p2", roomId: rid };
+        }
 
-          doc.players ||= { p1:{}, p2:{} };
-          doc.players.p2 = {
-            uid, name, session,
-            lastSeen: now,
-            claimedAt: now,
-            leaseUntil: now + LEASE_MS
-          };
-          return doc;
-        }, { applyLocally:false });
-
-        if(!force.committed) throw new Error("Room is full");
-        return { role:"p2", roomId: rid };
+        throw new Error("Room is full");
       }
 
       function subscribeRoom(roomId, cb){
@@ -837,6 +863,7 @@
           next.updatedAt = serverTimestamp();
           return next;
         }, { applyLocally: false });
+        if(res.error) throw res.error;
         if(!res.committed) throw new Error("Update failed. Try again.");
       }
 
@@ -845,9 +872,9 @@
         const r = roomRef(rid);
         await runTransaction(r, (doc) => {
           if(!doc) return doc;
-          if(doc.players?.p1?.uid === uid) return null;
+          if(doc.players?.p1?.uid === uid) return null; // host leaves => delete room
           if(doc.players?.p2?.uid === uid){
-            doc.players.p2 = {uid:"", name:"", session:"", lastSeen:0, claimedAt:0, leaseUntil:0};
+            doc.players.p2 = {uid:"", name:""};
             doc.status = "waiting";
             doc.idx = 0;
             doc.state.last = {p1:"—",p2:"—"};
@@ -856,7 +883,6 @@
             doc.state.pickLast = {p1:"—",p2:"—"};
             doc.state.pickAnswered = {p1:false,p2:false};
             doc.state.pickTurn = "p1";
-            doc.updatedAt = serverTimestamp();
             return doc;
           }
           return doc;
@@ -867,43 +893,7 @@
     })();
 
     // Client state
-    const client = { uid:"", roomId:"", role:"", room:null, unsub:null, session: sessionToken };
-
-    // Presence
-    let presenceTimer = null;
-    function stopPresence(){ if(presenceTimer) clearInterval(presenceTimer); presenceTimer = null; }
-
-    function setupPresence(roomId, role){
-      stopPresence();
-      const rid = extractRoomIdFromInput(roomId);
-      if(!rid || !role) return;
-
-      const roomPath = ref(db, `rooms/${rid}`);
-      const playerPath = ref(db, `rooms/${rid}/players/${role}`);
-
-      if(role === "p1"){
-        onDisconnect(roomPath).remove();
-      }else{
-        onDisconnect(playerPath).set({ uid:"", name:"", session:"", lastSeen:0, claimedAt:0, leaseUntil:0 });
-      }
-
-      // heartbeat renew lease
-      presenceTimer = setInterval(async () => {
-        try{
-          await RoomAPI.patchRoom(rid, (doc) => {
-            if(!doc?.players?.[role]) return doc;
-            if(doc.players[role].uid === client.uid){
-              const now = serverNow();
-              doc.players[role].lastSeen = now;
-              doc.players[role].leaseUntil = now + LEASE_MS;
-              doc.players[role].session = doc.players[role].session || client.session;
-              if(!doc.players[role].claimedAt) doc.players[role].claimedAt = now;
-            }
-            return doc;
-          });
-        }catch{}
-      }, HEARTBEAT_MS);
-    }
+    const client = { uid:"", roomId:"", role:"", room:null, unsub:null };
 
     function setScreen(name){
       ["screenHome","screenLobby","screenGame"].forEach(id => hide(id));
@@ -929,19 +919,17 @@
       return u.toString();
     }
 
-    function cleanupRoom(){
-      stopPresence();
+    async function cleanupRoom(){
       if(client.unsub) client.unsub();
       client.unsub = null;
       client.room = null;
       client.roomId = "";
       client.role = "";
+      await stopPresence();
     }
 
     function subscribeRoom(roomId){
       if(client.unsub) client.unsub();
-      setupPresence(roomId, client.role);
-
       client.unsub = RoomAPI.subscribeRoom(roomId, (doc) => {
         client.room = doc;
         if(!doc){
@@ -1047,51 +1035,29 @@
       el("opt2Btn").classList.toggle("selected", sel && sel !== "—" && sel === o2);
     }
 
-    // Host auto-clear ghost P2 (waiting lobby)
+    // ✅ Host clears ghost P2 using Presence (no lease hacks)
     let autoClearLock = false;
-    async function maybeAutoClearP2(room){
+    async function maybeAutoClearP2Presence(room){
       if(autoClearLock) return;
       if(client.role !== "p1") return;
       if(room.status !== "waiting") return;
-
-      const p2 = room.players?.p2;
-      if(!p2?.uid) return;
-
-      const now = serverNow();
-      const leaseUntil = Number(p2.leaseUntil || 0);
-      const lastSeen = Number(p2.lastSeen || 0);
-
-      const leaseExpired = leaseUntil && now >= leaseUntil;
-      const leaseCrazyFuture = leaseUntil && leaseUntil > (now + MAX_FUTURE);
-      const staleLastSeen = lastSeen && (now - lastSeen > STALE_MS);
-      const lastSeenZero = !lastSeen;
-
-      const shouldClear = leaseExpired || leaseCrazyFuture || staleLastSeen || lastSeenZero;
-      if(!shouldClear) return;
+      const p2uid = String(room.players?.p2?.uid || "");
+      if(!p2uid) return;
 
       autoClearLock = true;
       try{
-        await RoomAPI.patchRoom(room.roomId, (doc) => {
-          if(doc.status !== "waiting") return doc;
-          const p2d = doc.players?.p2;
-          if(!p2d?.uid) return doc;
-
-          const now2 = serverNow();
-          const lease2 = Number(p2d.leaseUntil || 0);
-          const last2 = Number(p2d.lastSeen || 0);
-
-          const expired2 = lease2 && now2 >= lease2;
-          const crazy2 = lease2 && lease2 > (now2 + MAX_FUTURE);
-          const stale2 = last2 && (now2 - last2 > STALE_MS);
-          const zero2 = !last2;
-
-          if(expired2 || crazy2 || stale2 || zero2){
-            doc.players.p2 = {uid:"", name:"", session:"", lastSeen:0, claimedAt:0, leaseUntil:0};
-          }
-          return doc;
-        });
+        const alive = await isConnAlive(room.roomId, p2uid, PRES_STALE_MS);
+        if(!alive){
+          await RoomAPI.patchRoom(room.roomId, (doc) => {
+            if(doc.status !== "waiting") return doc;
+            if(String(doc.players?.p2?.uid || "") === p2uid){
+              doc.players.p2 = { uid:"", name:"" };
+            }
+            return doc;
+          });
+        }
       }catch{}
-      setTimeout(()=> autoClearLock=false, 800);
+      setTimeout(()=> autoClearLock=false, 900);
     }
 
     function renderFromRoom(room){
@@ -1104,20 +1070,15 @@
       const bothJoined = !!(room.players.p1.uid && room.players.p2.uid);
       el("startGame").disabled = !(bothJoined && client.role === "p1");
 
-      const isHost = client.role === "p1";
-      const inLobby = room.status === "waiting";
-      el("kickP2").style.display = (isHost && inLobby && !!room.players?.p2?.uid) ? "inline-block" : "none";
-      el("forceClearP2").style.display = (isHost && inLobby) ? "inline-block" : "none";
-
       el("lobbyDebug").textContent =
-        `P2.uid=${room.players?.p2?.uid ? "SET" : "EMPTY"} | P2.lastSeen=${room.players?.p2?.lastSeen || 0} | P2.leaseUntil=${room.players?.p2?.leaseUntil || 0} | serverNow=${serverNow()} | offsetReady=${offsetReady}`;
+        `p1=${room.players?.p1?.uid ? "SET" : "EMPTY"} | p2=${room.players?.p2?.uid ? "SET" : "EMPTY"} | serverNow=${serverNow()} | offsetReady=${offsetReady}`;
 
       if(room.status === "waiting"){
         setScreen("screenLobby");
         el("lobbyHint").textContent = bothJoined
           ? "Both players joined ✅ Host can start the game."
           : "Waiting for Player 2 to join…";
-        maybeAutoClearP2(room);
+        maybeAutoClearP2Presence(room);
       }
       if(room.status === "playing"){
         setScreen("screenGame");
@@ -1178,15 +1139,21 @@
     // Flows
     async function createRoomFlow(){
       showHomeError("");
-      const myName = clampName(el("myNameCreate").value, "Player 1");
+      const myName = clampName(el("myNameCreate").value || localStorage.getItem(NAMEKEY) || "", "Player 1");
+      localStorage.setItem(NAMEKEY, myName);
+
       try{
         requireOffsetReady();
         const q = deepClone(questions);
         const { roomId, role } = await RoomAPI.createRoom({
-          hostUid: client.uid, hostName: myName, q, session: client.session
+          hostUid: client.uid, hostName: myName, q
         });
         client.role = role;
         client.roomId = roomId;
+
+        // ✅ presence (host)
+        await startPresence(roomId, myName);
+
         setText("topSub", "Room created. Share link and wait for friend.");
         subscribeRoom(roomId);
       }catch(err){
@@ -1198,17 +1165,43 @@
     async function joinRoomFlow(){
       showHomeError("");
       const raw = el("roomIdJoin").value || "";
-      const myName = clampName(el("myNameJoin").value, "Player 2");
+      const myName = clampName(el("myNameJoin").value || localStorage.getItem(NAMEKEY) || "", "Player 2");
+      localStorage.setItem(NAMEKEY, myName);
+
       if(!extractRoomIdFromInput(raw)) return showHomeError("Please enter Room code or paste full link.");
+
       try{
         requireOffsetReady();
-        const { role, roomId } = await RoomAPI.joinRoom({
-          roomId: raw, uid: client.uid, name: myName, session: client.session
-        });
-        client.role = role;
-        client.roomId = roomId;
-        setText("topSub", "Joined room. Waiting for host to start.");
-        subscribeRoom(roomId);
+
+        // ✅ retry a few times in case host is clearing ghost P2 right now
+        let lastErr = null;
+        for(let i=0;i<5;i++){
+          try{
+            const { role, roomId } = await RoomAPI.joinRoom({
+              roomId: raw, uid: client.uid, name: myName
+            });
+
+            client.role = role;
+            client.roomId = roomId;
+
+            // ✅ presence (joiner)
+            await startPresence(roomId, myName);
+
+            setText("topSub", "Joined room. Waiting for host to start.");
+            subscribeRoom(roomId);
+            return;
+          }catch(e){
+            lastErr = e;
+            const msg = String(e?.message || "");
+            if(msg.includes("Room is full")){
+              // wait a bit and retry (host may clear ghost)
+              await new Promise(r=>setTimeout(r, 450));
+              continue;
+            }
+            throw e; // non-full error => stop
+          }
+        }
+        throw lastErr || new Error("Failed to join");
       }catch(err){
         console.error(err);
         showHomeError(err?.message || "Failed to join room");
@@ -1251,24 +1244,8 @@
       try{
         if(client.roomId) await RoomAPI.leaveRoom(client.roomId, client.uid);
       }catch(e){ console.error(e); }
-      cleanupRoom();
+      await cleanupRoom();
       setScreen("screenHome");
-    }
-
-    async function forceClearP2Flow(hard=false){
-      if(client.role !== "p1" || !client.roomId) return;
-      if(!confirm(hard ? "Force Clear P2? (hard)" : "Kick P2?")) return;
-      try{
-        await RoomAPI.patchRoom(client.roomId, (doc) => {
-          if(doc.status !== "waiting") return doc;
-          doc.players.p2 = {uid:"", name:"", session:"", lastSeen:0, claimedAt:0, leaseUntil:0};
-          doc.updatedAt = serverTimestamp();
-          return doc;
-        });
-      }catch(err){
-        console.error(err);
-        showLobbyError(err?.message || "Kick failed");
-      }
     }
 
     async function setMode(mode){
@@ -1416,9 +1393,6 @@
     el("startGame").addEventListener("click", startGameFlow);
     el("leaveRoom").addEventListener("click", leaveRoomFlow);
 
-    el("kickP2").addEventListener("click", ()=> forceClearP2Flow(false));
-    el("forceClearP2").addEventListener("click", ()=> forceClearP2Flow(true));
-
     el("copyLink").addEventListener("click", async () => {
       try{
         await navigator.clipboard.writeText(el("shareLink").value);
@@ -1498,7 +1472,7 @@
       if(!confirm("Reset EVERYTHING?")) return;
       localStorage.removeItem(QKEY);
       localStorage.removeItem("admin_unlocked_firebase");
-      localStorage.removeItem(SESSION_KEY);
+      localStorage.removeItem(NAMEKEY);
       location.reload();
     });
 
@@ -1520,6 +1494,13 @@
       loadQuestions();
       setScreen("screenHome");
 
+      // preload saved name
+      const saved = localStorage.getItem(NAMEKEY) || "";
+      if(saved){
+        el("myNameCreate").value = saved;
+        el("myNameJoin").value = saved;
+      }
+
       // disable until server offset ready
       el("btnCreateRoom").disabled = true;
       el("btnJoinRoom").disabled = true;
@@ -1528,8 +1509,16 @@
       const roomFromUrl = cleanRoomId(url.searchParams.get("room") || "");
       if(roomFromUrl){
         el("roomIdJoin").value = roomFromUrl;
-        setText("topSub", "Room link opened. Enter your name & Join.");
-        setTimeout(()=> el("myNameJoin").focus(), 250);
+        setText("topSub", "Invite link opened. Joining…");
+
+        setTimeout(()=>{
+          // if name missing, focus; else auto-join
+          if(!el("myNameJoin").value.trim()){
+            el("myNameJoin").focus();
+          }else{
+            joinRoomFlow(); // ✅ auto join
+          }
+        }, 250);
       }
     }
 
