@@ -3,101 +3,77 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>2P Party Game — FIXED ✅</title>
+  <title>2P Game — Final Fixed ✅</title>
   <style>
-    :root{
-      --bg:#f5f9ff; --card:#ffffff; --stroke:#dbe7ff;
-      --blue:#1d4ed8; --blue2:#2563eb;
-      --txt:#0f172a; --muted:#64748b;
-      --shadow: 0 10px 26px rgba(15,23,42,.08);
-      --r:18px;
-    }
-    *{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
-    body{
-      margin:0; min-height:100dvh;
-      background:
-        radial-gradient(1100px 520px at 50% -25%, rgba(37,99,235,.22), transparent 55%),
-        radial-gradient(700px 380px at 0% 0%, rgba(29,78,216,.10), transparent 60%),
-        linear-gradient(180deg,var(--bg),#fff);
-      color:var(--txt);
-      display:flex; justify-content:center; align-items:flex-start;
-      padding:14px;
-    }
+    :root{ --bg:#f5f9ff; --card:#ffffff; --stroke:#dbe7ff; --blue:#1d4ed8; --blue2:#2563eb; --txt:#0f172a; --muted:#64748b; --shadow: 0 10px 26px rgba(15,23,42,.08); --r:18px; }
+    *{box-sizing:border-box;font-family:system-ui,-apple-system,sans-serif}
+    body{ margin:0; min-height:100dvh; background:radial-gradient(1100px 520px at 50% -25%, rgba(37,99,235,.22), transparent 55%), linear-gradient(180deg,var(--bg),#fff); color:var(--txt); display:flex; justify-content:center; padding:14px; }
     .app{width:min(520px,100%);display:grid;gap:12px;padding-bottom:96px}
-    .topbar{ background:rgba(255,255,255,.92); border:1px solid var(--stroke); border-radius:var(--r); box-shadow:var(--shadow); padding:12px; backdrop-filter: blur(10px); }
-    .titleRow{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
-    h1{margin:0;font-size:16px;letter-spacing:.2px}
-    .sub{margin-top:4px;color:var(--muted);font-size:12px;line-height:1.3}
-    .card{ background:rgba(255,255,255,.92); border:1px solid var(--stroke); border-radius:var(--r); box-shadow:var(--shadow); padding:12px; backdrop-filter: blur(10px); overflow:hidden; }
-    .btn{ border:1px solid var(--stroke); background:linear-gradient(180deg,#ffffff,#f8fbff); color:var(--txt); border-radius:16px; padding:12px 12px; font-weight:1000; cursor:pointer; box-shadow:0 6px 14px rgba(15,23,42,.06); transition:transform .06s ease; user-select:none; }
-    .btn.selected{ background:linear-gradient(135deg,var(--blue),var(--blue2)); color:#fff; border:0; }
-    .btn:disabled{opacity:.45; cursor:not-allowed;}
-    input{ width:100%; border:1px solid var(--stroke); border-radius:16px; padding:12px; background:#fff; outline:none; margin-bottom:8px;}
-    .divider{height:1px;background:#eef2ff;margin:12px 0}
+    .card{ background:rgba(255,255,255,.92); border:1px solid var(--stroke); border-radius:var(--r); box-shadow:var(--shadow); padding:20px; backdrop-filter: blur(10px); }
+    .btn{ border:1px solid var(--stroke); background:linear-gradient(180deg,#ffffff,#f8fbff); color:var(--txt); border-radius:16px; padding:14px; font-weight:bold; cursor:pointer; width:100%; transition:transform .1s; margin-top:10px; }
+    .btn.primary{ background:linear-gradient(135deg,var(--blue),var(--blue2)); color:#fff; border:0; }
+    .btn:active{ transform: scale(0.98); }
+    input{ width:100%; border:1px solid var(--stroke); border-radius:12px; padding:12px; margin-bottom:10px; outline:none; font-size:16px; }
     .screen{display:none} .screen.show{display:block}
-    .pill{font-size:12px;padding:6px 10px;border-radius:999px;border:1px solid rgba(29,78,216,.18);background:rgba(29,78,216,.08);color:#1e3a8a;font-weight:1000}
-    .mono{font-family:monospace; background:#eee; padding:2px 4px; border-radius:4px}
+    .mono{font-family:monospace; background:#f1f5f9; padding:4px 8px; border-radius:6px; font-weight:bold; color:var(--blue)}
+    .scoreGrid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:15px 0;}
+    .scoreCard{border:1px solid var(--stroke); border-radius:12px; padding:10px; text-align:center; background:#fff;}
+    #statusPill{ font-size:12px; color:var(--muted); text-align:center; margin-bottom:10px; }
   </style>
 </head>
 <body>
 
   <div class="app">
-    <div class="topbar">
-      <div class="titleRow">
-        <div>
-          <h1>2-Player Party Game</h1>
-          <div class="sub" id="topSub">Status: Connecting...</div>
+    <div class="card">
+      <div id="statusPill">Connecting to Server...</div>
+      
+      <div id="screenHome" class="screen show">
+        <h2>Create Room</h2>
+        <input id="nameHost" placeholder="Your Name" />
+        <button class="btn primary" id="btnCreate">Create New Room</button>
+        
+        <hr style="margin:20px 0; border:0; border-top:1px solid #eee">
+        
+        <h2>Join Room</h2>
+        <input id="roomInput" placeholder="Enter Room Code" />
+        <input id="nameGuest" placeholder="Your Name" />
+        <button class="btn" id="btnJoin">Join Game</button>
+      </div>
+
+      <div id="screenLobby" class="screen">
+        <h3>Room: <span id="displayRoomId" class="mono"></span></h3>
+        <p style="font-size:14px; color:var(--muted)">Share the code with a friend. Once they join, you can start.</p>
+        <div class="scoreGrid">
+          <div class="scoreCard"><b>P1:</b><br><span id="p1Name">...</span></div>
+          <div class="scoreCard"><b>P2:</b><br><span id="p2Name">Waiting...</span></div>
         </div>
+        <button class="btn primary" id="btnStart" disabled>Start Game</button>
       </div>
-    </div>
 
-    <div class="card screen show" id="screenHome">
-      <div class="grid">
-        <p><b>Create Room</b></p>
-        <input id="myNameCreate" placeholder="Your name" />
-        <button class="btn selected" id="btnCreateRoom">Create Room</button>
-        
-        <div class="divider"></div>
-        
-        <p><b>Join Room</b></p>
-        <input id="roomIdJoin" placeholder="Enter Room Code" />
-        <input id="myNameJoin" placeholder="Your name" />
-        <button class="btn" id="btnJoinRoom">Join Room</button>
-        <div id="homeErr" style="color:red; font-size:12px; margin-top:10px; display:none;"></div>
+      <div id="screenGame" class="screen">
+        <div style="background:#f8fbff; padding:20px; border-radius:12px; text-align:center; min-height:100px; display:flex; align-items:center; justify-content:center">
+           <h2 id="questionText">Waiting for question...</h2>
+        </div>
+        <div class="scoreGrid">
+          <div class="scoreCard">P1 Score: <b id="p1Score">0</b></div>
+          <div class="scoreCard">P2 Score: <b id="p2Score">0</b></div>
+        </div>
+        <button class="btn primary" id="btnNext" style="display:none">Next Question</button>
+        <button class="btn" onclick="location.reload()">Exit Game</button>
       </div>
-    </div>
-
-    <div class="card screen" id="screenLobby">
-      <h3>Room: <span id="lobbyRoomId" class="mono"></span></h3>
-      <p>Share this code with your friend!</p>
-      <div class="divider"></div>
-      <p>P1 (Host): <b id="lobbyP1">Waiting...</b></p>
-      <p>P2 (Guest): <b id="lobbyP2">Waiting...</b></p>
-      <div class="divider"></div>
-      <button class="btn selected" id="startGame" disabled>Start Game</button>
-      <button class="btn" onclick="location.reload()">Leave</button>
-    </div>
-
-    <div class="card screen" id="screenGame">
-      <h3>Game Started!</h3>
-      <p>Wait for next update...</p>
-      <button class="btn" onclick="location.reload()">Reset Game</button>
     </div>
   </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-    import { getDatabase, ref, onValue, get, runTransaction, serverTimestamp, set } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
+    import { getDatabase, ref, onValue, get, set, update, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 
-    // --- CONFIG ---
     const firebaseConfig = {
       apiKey: "AIzaSyDDMj_YT8NRN-RYpksqjGOUTF5RzM5AgOM",
       authDomain: "power2-91fdc.firebaseapp.com",
       databaseURL: "https://power2-91fdc-default-rtdb.firebaseio.com",
       projectId: "power2-91fdc",
-      storageBucket: "power2-91fdc.firebasestorage.app",
-      messagingSenderId: "1096207181248",
       appId: "1:1096207181248:web:2fa473d9d8781616559425"
     };
 
@@ -105,119 +81,107 @@
     const db = getDatabase(app);
     const auth = getAuth(app);
 
-    let client = { uid: "", name: "", roomId: "", role: "" };
+    let client = { uid: null, roomId: null, role: null };
+    const questions = ["Never have I ever lied about my age.", "Never have I ever ghosted someone.", "Never have I ever stolen a snack.", "Never have I ever faked being sick."];
 
-    // --- HELPERS ---
-    const el = (id) => document.getElementById(id);
     const showScreen = (id) => {
       document.querySelectorAll('.screen').forEach(s => s.classList.remove('show'));
-      el(id).classList.add('show');
+      document.getElementById(id).classList.add('show');
     };
 
-    // --- AUTH ---
-    signInAnonymously(auth).catch(console.error);
     onAuthStateChanged(auth, (user) => {
       if(user) {
         client.uid = user.uid;
-        el("topSub").textContent = "Ready to Play ✅";
+        document.getElementById('statusPill').innerText = "Connected ✅";
       }
     });
+    signInAnonymously(auth);
 
-    // --- ROOM LOGIC ---
-    async function createRoom() {
-      const name = el("myNameCreate").value.trim() || "Host";
+    // --- CREATE ROOM ---
+    document.getElementById('btnCreate').onclick = async () => {
+      if(!client.uid) return alert("Wait for connection...");
+      const name = document.getElementById('nameHost').value || "Host";
       const roomId = Math.random().toString(36).substring(2, 8).toUpperCase();
       
-      const roomRef = ref(db, `rooms/${roomId}`);
-      await set(roomRef, {
+      await set(ref(db, `rooms/${roomId}`), {
         roomId,
-        hostUid: client.uid,
+        status: "waiting",
+        qIdx: 0,
         players: {
           p1: { uid: client.uid, name: name },
-          p2: { uid: "", name: "" } // Important: Initialize empty
+          p2: { uid: "", name: "" }
         },
-        status: "waiting",
-        createdAt: serverTimestamp()
+        scores: { p1: 0, p2: 0 }
       });
 
-      client.roomId = roomId;
-      client.role = "p1";
-      startLobby(roomId);
-    }
+      client.roomId = roomId; client.role = "p1";
+      initLobby(roomId);
+    };
 
-    async function joinRoom() {
-      const roomId = el("roomIdJoin").value.trim().toUpperCase();
-      const name = el("myNameJoin").value.trim() || "Player 2";
-      const errEl = el("homeErr");
+    // --- JOIN ROOM ---
+    document.getElementById('btnJoin').onclick = async () => {
+      if(!client.uid) return alert("Wait for connection...");
+      let raw = document.getElementById('roomInput').value.trim().toUpperCase();
+      let roomId = raw.includes("?ROOM=") ? raw.split("?ROOM=")[1].split("&")[0] : raw;
+      const name = document.getElementById('nameGuest').value || "Guest";
+
+      const snap = await get(ref(db, `rooms/${roomId}`));
+      if(!snap.exists()) return alert("Room not found!");
+
+      const data = snap.val();
       
-      if(!roomId) return;
-
-      const roomRef = ref(db, `rooms/${roomId}`);
-      
-      try {
-        const result = await runTransaction(roomRef, (room) => {
-          if (!room) return; // Room doesn't exist
-
-          // 1. Agar tum pehle se P1 ho (Same UID)
-          if (room.players.p1.uid === client.uid) return room;
-
-          // 2. Agar P2 khali hai ya tum hi P2 ho
-          if (!room.players.p2.uid || room.players.p2.uid === "" || room.players.p2.uid === client.uid) {
-            room.players.p2 = { uid: client.uid, name: name };
-            return room;
-          }
-
-          // 3. Room Full
-          return; 
-        });
-
-        if (result.committed && result.snapshot.exists()) {
-          client.roomId = roomId;
-          client.role = result.snapshot.val().players.p1.uid === client.uid ? "p1" : "p2";
-          startLobby(roomId);
-        } else {
-          errEl.textContent = "Error: Room Full ya Code Galat hai!";
-          errEl.style.display = "block";
-        }
-      } catch (e) {
-        console.error(e);
+      // If already in room (either as p1 or p2)
+      if(data.players.p1.uid === client.uid) { client.role = "p1"; }
+      else if(data.players.p2.uid === client.uid || data.players.p2.uid === "") {
+        await update(ref(db, `rooms/${roomId}/players/p2`), { uid: client.uid, name: name });
+        client.role = "p2";
+      } else {
+        return alert("Room is actually full!");
       }
-    }
 
-    function startLobby(roomId) {
-      showScreen("screenLobby");
-      el("lobbyRoomId").textContent = roomId;
+      client.roomId = roomId;
+      initLobby(roomId);
+    };
+
+    function initLobby(roomId) {
+      showScreen('screenLobby');
+      document.getElementById('displayRoomId').innerText = roomId;
 
       onValue(ref(db, `rooms/${roomId}`), (snap) => {
         const data = snap.val();
         if(!data) return;
 
-        el("lobbyP1").textContent = data.players.p1.name;
-        el("lobbyP2").textContent = data.players.p2.uid ? data.players.p2.name : "Waiting for friend...";
-
+        document.getElementById('p1Name').innerText = data.players.p1.name;
+        document.getElementById('p2Name').innerText = data.players.p2.uid ? data.players.p2.name : "Waiting...";
+        
         if(data.players.p2.uid) {
-          el("startGame").disabled = (client.role !== "p1");
-          el("startGame").textContent = (client.role === "p1") ? "Start Game" : "Wait for Host";
+            document.getElementById('btnStart').disabled = (client.role !== "p1");
+            document.getElementById('btnStart').innerText = (client.role === "p1") ? "Start Game" : "Host will start...";
         }
 
         if(data.status === "playing") {
-          showScreen("screenGame");
+          showScreen('screenGame');
+          document.getElementById('questionText').innerText = questions[data.qIdx % questions.length];
+          document.getElementById('p1Score').innerText = data.scores.p1;
+          document.getElementById('p2Score').innerText = data.scores.p2;
+          document.getElementById('btnNext').style.display = (client.role === "p1") ? "block" : "none";
         }
       });
     }
 
-    // --- LISTENERS ---
-    el("btnCreateRoom").onclick = createRoom;
-    el("btnJoinRoom").onclick = joinRoom;
-    el("startGame").onclick = async () => {
-      await set(ref(db, `rooms/${client.roomId}/status`), "playing");
+    document.getElementById('btnStart').onclick = () => {
+      update(ref(db, `rooms/${client.roomId}`), { status: "playing" });
     };
 
-    // Link se auto-fill room code
+    document.getElementById('btnNext').onclick = () => {
+      get(ref(db, `rooms/${client.roomId}/qIdx`)).then(s => {
+        update(ref(db, `rooms/${client.roomId}`), { qIdx: (s.val() || 0) + 1 });
+      });
+    };
+
+    // Auto-fill roomId from URL
     const urlParams = new URLSearchParams(window.location.search);
-    if(urlParams.get('room')) {
-      el("roomIdJoin").value = urlParams.get('room');
-    }
+    if(urlParams.get('room')) document.getElementById('roomInput').value = urlParams.get('room');
 
   </script>
 </body>
