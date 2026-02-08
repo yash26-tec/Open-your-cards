@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>2P Party Game (Firebase Rooms)</title>
+  <title>2P Party Game (Firebase Rooms) — Final Fixed</title>
   <style>
     :root{
       --bg:#f5f9ff; --card:#ffffff; --stroke:#dbe7ff;
@@ -521,13 +521,18 @@
 
       <div id="adminLogin">
         <div class="hint">Password required</div>
+
+        <!-- ✅ Autofill block (best-effort) -->
         <form autocomplete="off" onsubmit="return false;">
+          <input type="text" style="display:none" autocomplete="username">
+          <input type="password" style="display:none" autocomplete="new-password">
+
           <div class="row">
             <input id="adminPass"
                    type="password"
                    placeholder="Password"
                    name="admin_pass__no_fill"
-                   autocomplete="off"
+                   autocomplete="new-password"
                    inputmode="text"
                    autocapitalize="none"
                    autocorrect="off"
@@ -585,11 +590,11 @@
     // Firebase (CDN ESM)
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
     import {
-      getDatabase, ref, onValue, off, set, get, update, remove, runTransaction, serverTimestamp
+      getDatabase, ref, onValue, off, get, runTransaction, serverTimestamp
     } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 
-    // ✅ Your config (same as you sent)
+    // ✅ Your config
     const firebaseConfig = {
       apiKey: "AIzaSyDDMj_YT8NRN-RYpksqjGOUTF5RzM5AgOM",
       authDomain: "power2-91fdc.firebaseapp.com",
@@ -615,17 +620,34 @@
 
     const clampName = (s, fallback) => (String(s||"").trim() || fallback).slice(0, 24);
 
+    function cleanRoomId(s){
+      // ✅ fixes hidden spaces / hyphens etc
+      return (String(s||"").toUpperCase().trim().replace(/[^A-Z0-9]/g, "")).slice(0, 10);
+    }
+
     function genRoomId(){
       const chars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
       let out = "";
       for(let i=0;i<6;i++) out += chars[Math.floor(Math.random()*chars.length)];
       return out;
     }
+
     function deepClone(x){ return JSON.parse(JSON.stringify(x)); }
+
+    function shuffle(arr){
+      for(let i=arr.length-1;i>0;i--){
+        const j = Math.floor(Math.random()*(i+1));
+        [arr[i],arr[j]] = [arr[j],arr[i]];
+      }
+    }
+    function buildOrder(len){
+      const order = Array.from({length:len}, (_,i)=>i);
+      shuffle(order);
+      return order;
+    }
 
     // ---------------------------
     // Questions (Manage) - local
-    // BUT: we sync questions into room at Create/Start so both devices same
     // ---------------------------
     const QKEY = "party_questions_local_v2";
     const ADMIN_PASSWORD = "Admin@123";
@@ -662,18 +684,6 @@
       localStorage.setItem(QKEY, JSON.stringify(questions));
     }
 
-    function shuffle(arr){
-      for(let i=arr.length-1;i>0;i--){
-        const j = Math.floor(Math.random()*(i+1));
-        [arr[i],arr[j]] = [arr[j],arr[i]];
-      }
-    }
-    function buildOrder(len){
-      const order = Array.from({length:len}, (_,i)=>i);
-      shuffle(order);
-      return order;
-    }
-
     // ---------------------------
     // Room doc model
     // ---------------------------
@@ -689,7 +699,7 @@
         mode: "nhie",
         idx: 0,
         order: buildOrder((q?.nhie||[]).length),
-        questions: q || {nhie:[], pick:[]}, // ✅ stored in room
+        questions: q || {nhie:[], pick:[]}, // stored in room
         state: {
           counts: {p1:0,p2:0},
           last: {p1:"—",p2:"—"},
@@ -711,13 +721,12 @@
       function roomRef(roomId){ return ref(db, `rooms/${roomId}`); }
 
       async function createRoom({hostUid, hostName, q}){
-        // try few times if collision
-        for(let t=0; t<6; t++){
+        for(let t=0; t<8; t++){
           const roomId = genRoomId();
           const r = roomRef(roomId);
 
           const res = await runTransaction(r, (current) => {
-            if(current !== null) return; // abort: already exists
+            if(current !== null) return; // abort: exists
             return makeNewRoomDoc({roomId, hostUid, hostName, q});
           }, { applyLocally: false });
 
@@ -728,12 +737,15 @@
         throw new Error("Could not create room. Try again.");
       }
 
+      // ✅ FINAL FIXED JOIN
       async function joinRoom({roomId, uid, name}){
-        const r = roomRef(roomId);
+        const rid = cleanRoomId(roomId);
+        const r = roomRef(rid);
 
         const res = await runTransaction(r, (doc) => {
-          if(!doc) return; // abort
-          // rejoin logic
+          if(!doc) return; // room not found => abort
+
+          // rejoin allowed
           if(doc.players?.p1?.uid === uid){
             doc.players.p1.name = name || doc.players.p1.name;
             doc.updatedAt = serverTimestamp();
@@ -744,36 +756,41 @@
             doc.updatedAt = serverTimestamp();
             return doc;
           }
-          // join as p2 if empty
-          if(doc.players?.p2?.uid) return doc; // full (we’ll detect after)
+
+          // ✅ if full => ABORT (IMPORTANT)
+          if(doc.players?.p2?.uid) return;
+
+          // join as p2
           doc.players.p2.uid = uid;
           doc.players.p2.name = name;
           doc.updatedAt = serverTimestamp();
           return doc;
         }, { applyLocally: false });
 
-        if(!res.committed || !res.snapshot.exists()){
-          throw new Error("Room not found");
+        // ✅ clear errors
+        if(!res.committed){
+          const snap = await get(r);
+          if(!snap.exists()) throw new Error("Room not found");
+          throw new Error("Room is full");
         }
 
         const doc = res.snapshot.val();
-        if(doc.players?.p1?.uid === uid) return { role:"p1" };
-        if(doc.players?.p2?.uid === uid) return { role:"p2" };
+        if(doc.players?.p1?.uid === uid) return { role:"p1", roomId: rid };
+        if(doc.players?.p2?.uid === uid) return { role:"p2", roomId: rid };
 
-        // if reached here, room was full
-        if(doc.players?.p2?.uid) throw new Error("Room is full");
         throw new Error("Join failed");
       }
 
       function subscribeRoom(roomId, cb){
-        const r = roomRef(roomId);
+        const r = roomRef(cleanRoomId(roomId));
         const handler = (snap) => cb(snap.exists() ? snap.val() : null);
         onValue(r, handler);
         return () => off(r, "value", handler);
       }
 
       async function patchRoom(roomId, patchFn){
-        const r = roomRef(roomId);
+        const rid = cleanRoomId(roomId);
+        const r = roomRef(rid);
         const res = await runTransaction(r, (doc) => {
           if(!doc) return doc;
           const next = patchFn(deepClone(doc));
@@ -785,9 +802,12 @@
       }
 
       async function leaveRoom(roomId, uid){
-        const r = roomRef(roomId);
+        const rid = cleanRoomId(roomId);
+        const r = roomRef(rid);
+
         await runTransaction(r, (doc) => {
           if(!doc) return doc;
+
           const p1 = doc.players?.p1?.uid;
           const p2 = doc.players?.p2?.uid;
 
@@ -798,22 +818,21 @@
           if(p2 === uid){
             doc.players.p2 = {uid:"", name:""};
             doc.status = "waiting";
-            // safe reset for waiting state
             doc.idx = 0;
+
             doc.state.last = {p1:"—",p2:"—"};
             doc.state.nhieAnswered = {p1:false,p2:false};
             doc.state.nhieTurn = "p1";
+
             doc.state.pickLast = {p1:"—",p2:"—"};
             doc.state.pickAnswered = {p1:false,p2:false};
             doc.state.pickTurn = "p1";
+
             doc.updatedAt = serverTimestamp();
             return doc;
           }
           return doc;
         }, { applyLocally: false });
-
-        // If we returned null (deleted), ensure remove in db
-        // (transaction already deletes)
       }
 
       return { createRoom, joinRoom, subscribeRoom, patchRoom, leaveRoom };
@@ -825,7 +844,7 @@
     const client = {
       uid: "",
       roomId: "",
-      role: "", // p1 or p2
+      role: "",
       room: null,
       unsub: null,
     };
@@ -851,7 +870,7 @@
 
     function buildShareLink(roomId){
       const u = new URL(window.location.href);
-      u.searchParams.set("room", roomId);
+      u.searchParams.set("room", cleanRoomId(roomId));
       return u.toString();
     }
 
@@ -878,12 +897,10 @@
     }
 
     // ---------------------------
-    // Render using room.questions (synced)
+    // Render (room.questions is source of truth)
     // ---------------------------
     function getQ(room){
-      // room.questions is source of truth
-      const q = room.questions || {nhie:[], pick:[]};
-      return q;
+      return room.questions || {nhie:[], pick:[]};
     }
 
     function getCurrentItem(room){
@@ -940,6 +957,7 @@
         el("nhieNever").disabled = !myTurn;
       }
 
+      // ✅ blue only when selected
       const sel = room.state.last[turn];
       el("nhieHave").classList.toggle("selected", sel === "I Have");
       el("nhieNever").classList.toggle("selected", sel === "I Never");
@@ -972,6 +990,7 @@
         el("opt2Btn").disabled = !myTurn;
       }
 
+      // ✅ blue only on selected option for current turn
       const sel = room.state.pickLast[t];
       const o1 = el("opt1Btn").textContent || "Option 1";
       const o2 = el("opt2Btn").textContent || "Option 2";
@@ -1064,7 +1083,7 @@
       const myName = clampName(el("myNameCreate").value, "Player 1");
 
       try{
-        const q = deepClone(questions); // sync questions into room
+        const q = deepClone(questions);
         const { roomId, role } = await RoomAPI.createRoom({
           hostUid: client.uid,
           hostName: myName,
@@ -1077,24 +1096,26 @@
         setText("topSub", "Room created. Share link and wait for friend.");
         subscribeRoom(roomId);
       }catch(err){
+        console.error(err);
         showHomeError(err?.message || "Failed to create room");
       }
     }
 
     async function joinRoomFlow(roomIdFromUrl){
       showHomeError("");
-      const roomId = (roomIdFromUrl || el("roomIdJoin").value || "").trim().toUpperCase();
+      const roomId = cleanRoomId(roomIdFromUrl || el("roomIdJoin").value || "");
       const myName = clampName(el("myNameJoin").value, "Player 2");
-      if(!roomId) return showHomeError("Please enter Room code.");
+      if(!roomId) return showHomeError("Please enter Room code (example: AB12CD).");
 
       try{
-        const { role } = await RoomAPI.joinRoom({ roomId, uid: client.uid, name: myName });
+        const { role, roomId: rid } = await RoomAPI.joinRoom({ roomId, uid: client.uid, name: myName });
         client.role = role;
-        client.roomId = roomId;
+        client.roomId = rid;
 
         setText("topSub", "Joined room. Waiting for host to start.");
-        subscribeRoom(roomId);
+        subscribeRoom(rid);
       }catch(err){
+        console.error(err);
         showHomeError(err?.message || "Failed to join room");
       }
     }
@@ -1105,7 +1126,6 @@
       if(!client.roomId) return;
 
       try{
-        // sync latest local questions into room before start
         const q = deepClone(questions);
 
         await RoomAPI.patchRoom(client.roomId, (doc) => {
@@ -1115,6 +1135,7 @@
           doc.questions = q;
           doc.status = "playing";
           doc.mode = doc.mode || "nhie";
+
           const len = doc.mode === "nhie" ? (q.nhie||[]).length : (q.pick||[]).length;
           doc.order = buildOrder(len);
           doc.idx = 0;
@@ -1130,17 +1151,19 @@
           return doc;
         });
       }catch(err){
+        console.error(err);
         showLobbyError(err?.message || "Cannot start");
       }
     }
 
     async function leaveRoomFlow(){
-      if(!client.roomId){
-        cleanupRoom();
-        setScreen("screenHome");
-        return;
+      try{
+        if(client.roomId){
+          await RoomAPI.leaveRoom(client.roomId, client.uid);
+        }
+      }catch(e){
+        console.error(e);
       }
-      await RoomAPI.leaveRoom(client.roomId, client.uid);
       cleanupRoom();
       setScreen("screenHome");
     }
@@ -1152,7 +1175,6 @@
       await RoomAPI.patchRoom(client.roomId, (doc) => {
         doc.mode = mode;
 
-        // rebuild order using room.questions
         const q = doc.questions || {nhie:[], pick:[]};
         const len = mode === "nhie" ? (q.nhie||[]).length : (q.pick||[]).length;
         doc.order = buildOrder(len);
@@ -1309,6 +1331,8 @@
       if(unlocked) renderLists();
       el("adminPass").value = "";
       el("adminPass").setAttribute("readonly","readonly");
+      // ✅ prevents suggestion popping instantly
+      setTimeout(()=>el("adminPass").blur(), 0);
     }
     function closeSheet(){ el("overlay").classList.remove("show"); }
 
@@ -1346,6 +1370,9 @@
 
     el("openAdmin").addEventListener("click", openSheet);
     el("closeSheet").addEventListener("click", closeSheet);
+
+    // ✅ only unlock readonly when user actually clicks inside
+    el("adminPass").addEventListener("pointerdown", ()=> el("adminPass").removeAttribute("readonly"));
     el("adminPass").addEventListener("focus", ()=> el("adminPass").removeAttribute("readonly"));
 
     el("unlock").addEventListener("click", ()=>{
@@ -1425,7 +1452,7 @@
       setScreen("screenHome");
 
       const url = new URL(window.location.href);
-      const roomFromUrl = (url.searchParams.get("room") || "").trim().toUpperCase();
+      const roomFromUrl = cleanRoomId(url.searchParams.get("room") || "");
       if(roomFromUrl){
         el("roomIdJoin").value = roomFromUrl;
         setText("topSub", "Room link opened. Enter your name & Join.");
@@ -1433,8 +1460,9 @@
       }
     }
 
-    // ✅ Anonymous auth (needed for proper uid)
+    // ✅ Anonymous auth
     signInAnonymously(auth).catch((e)=>{
+      console.error(e);
       showHomeError("Auth error: " + (e?.message || "unknown"));
     });
 
@@ -1442,10 +1470,8 @@
       if(!user) return;
       client.uid = user.uid;
       el("authInfo").textContent = "Connected (uid: " + user.uid.slice(0,8) + "…)";
-
       bootUI();
     });
   </script>
 </body>
 </html>
-
