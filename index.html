@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>2P Party Game (Firebase Rooms) — Final Fixed</title>
+  <title>2P Party Game (Supabase Rooms) — Final Ready</title>
   <style>
     :root{
       --bg:#f5f9ff; --card:#ffffff; --stroke:#dbe7ff;
@@ -327,7 +327,7 @@
       <div class="titleRow">
         <div>
           <h1>2-Player Party Game</h1>
-          <div class="sub" id="topSub">Firebase realtime rooms enabled ✅</div>
+          <div class="sub" id="topSub">Supabase realtime rooms enabled ✅</div>
         </div>
         <button class="btn ghost" id="openAdmin">Manage</button>
       </div>
@@ -522,7 +522,6 @@
       <div id="adminLogin">
         <div class="hint">Password required</div>
 
-        <!-- ✅ Autofill block (best-effort) -->
         <form autocomplete="off" onsubmit="return false;">
           <input type="text" style="display:none" autocomplete="username">
           <input type="password" style="display:none" autocomplete="new-password">
@@ -587,28 +586,17 @@
   </div>
 
   <script type="module">
-    // Firebase (CDN ESM)
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-    import {
-      getDatabase, ref, onValue, off, get, runTransaction, serverTimestamp
-    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
-    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+    // ===========================
+    // ✅ SUPABASE CONFIG (EDIT)
+    // ===========================
+    const SUPABASE_URL = "https://xgiryhgysebcskkyhmej.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_7WgNVc5MkpgJcoCj3iQArw_J4zcgtsg";
 
-    // ✅ Your config
-    const firebaseConfig = {
-      apiKey: "AIzaSyDDMj_YT8NRN-RYpksqjGOUTF5RzM5AgOM",
-      authDomain: "power2-91fdc.firebaseapp.com",
-      databaseURL: "https://power2-91fdc-default-rtdb.firebaseio.com",
-      projectId: "power2-91fdc",
-      storageBucket: "power2-91fdc.firebasestorage.app",
-      messagingSenderId: "1096207181248",
-      appId: "1:1096207181248:web:2fa473d9d8781616559425",
-      measurementId: "G-ZR2CT9GRHV"
-    };
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
-    const auth = getAuth(app);
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+    });
 
     // ---------------------------
     // Utilities
@@ -621,17 +609,14 @@
     const clampName = (s, fallback) => (String(s||"").trim() || fallback).slice(0, 24);
 
     function cleanRoomId(s){
-      // ✅ fixes hidden spaces / hyphens etc
       return (String(s||"").toUpperCase().trim().replace(/[^A-Z0-9]/g, "")).slice(0, 10);
     }
-
     function genRoomId(){
       const chars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
       let out = "";
       for(let i=0;i<6;i++) out += chars[Math.floor(Math.random()*chars.length)];
       return out;
     }
-
     function deepClone(x){ return JSON.parse(JSON.stringify(x)); }
 
     function shuffle(arr){
@@ -699,7 +684,7 @@
         mode: "nhie",
         idx: 0,
         order: buildOrder((q?.nhie||[]).length),
-        questions: q || {nhie:[], pick:[]}, // stored in room
+        questions: q || {nhie:[], pick:[]},
         state: {
           counts: {p1:0,p2:0},
           last: {p1:"—",p2:"—"},
@@ -710,111 +695,124 @@
           pickTurn: "p1",
           pickAnswered: {p1:false,p2:false},
         },
-        updatedAt: serverTimestamp()
+        updatedAt: Date.now()
       };
     }
 
     // ---------------------------
-    // Firebase Room API (Realtime Database)
+    // Supabase Room API
+    // - Uses rooms(room_id PK, doc jsonb, version int)
+    // - update uses optimistic concurrency: version match
     // ---------------------------
     const RoomAPI = (() => {
-      function roomRef(roomId){ return ref(db, `rooms/${roomId}`); }
+      async function readRoom(roomId){
+        const rid = cleanRoomId(roomId);
+        const { data, error } = await supabase
+          .from("rooms")
+          .select("room_id, doc, version, updated_at")
+          .eq("room_id", rid)
+          .maybeSingle();
+        if(error) throw error;
+        return data || null;
+      }
 
       async function createRoom({hostUid, hostName, q}){
-        for(let t=0; t<8; t++){
+        for(let t=0;t<8;t++){
           const roomId = genRoomId();
-          const r = roomRef(roomId);
-
-          const res = await runTransaction(r, (current) => {
-            if(current !== null) return; // abort: exists
-            return makeNewRoomDoc({roomId, hostUid, hostName, q});
-          }, { applyLocally: false });
-
-          if(res.committed){
-            return { roomId, role:"p1" };
-          }
+          const doc = makeNewRoomDoc({roomId, hostUid, hostName, q});
+          const { error } = await supabase
+            .from("rooms")
+            .insert({ room_id: roomId, doc, version: 0 });
+          if(!error) return { roomId, role:"p1" };
         }
         throw new Error("Could not create room. Try again.");
       }
 
-      // ✅ FINAL FIXED JOIN
       async function joinRoom({roomId, uid, name}){
         const rid = cleanRoomId(roomId);
-        const r = roomRef(rid);
+        for(let attempt=0; attempt<8; attempt++){
+          const row = await readRoom(rid);
+          if(!row) throw new Error("Room not found");
 
-        const res = await runTransaction(r, (doc) => {
-          if(!doc) return; // room not found => abort
+          const doc = row.doc;
 
           // rejoin allowed
           if(doc.players?.p1?.uid === uid){
             doc.players.p1.name = name || doc.players.p1.name;
-            doc.updatedAt = serverTimestamp();
-            return doc;
+            doc.updatedAt = Date.now();
+            const ok = await writeRoomCAS(rid, row.version, doc);
+            if(ok) return { role:"p1", roomId: rid };
+            continue;
           }
           if(doc.players?.p2?.uid === uid){
             doc.players.p2.name = name || doc.players.p2.name;
-            doc.updatedAt = serverTimestamp();
-            return doc;
+            doc.updatedAt = Date.now();
+            const ok = await writeRoomCAS(rid, row.version, doc);
+            if(ok) return { role:"p2", roomId: rid };
+            continue;
           }
 
-          // ✅ if full => ABORT (IMPORTANT)
-          if(doc.players?.p2?.uid) return;
+          // if full
+          if(doc.players?.p2?.uid) throw new Error("Room is full");
 
           // join as p2
           doc.players.p2.uid = uid;
           doc.players.p2.name = name;
-          doc.updatedAt = serverTimestamp();
-          return doc;
-        }, { applyLocally: false });
-
-        // ✅ clear errors
-        if(!res.committed){
-          const snap = await get(r);
-          if(!snap.exists()) throw new Error("Room not found");
-          throw new Error("Room is full");
+          doc.updatedAt = Date.now();
+          const ok = await writeRoomCAS(rid, row.version, doc);
+          if(ok) return { role:"p2", roomId: rid };
         }
-
-        const doc = res.snapshot.val();
-        if(doc.players?.p1?.uid === uid) return { role:"p1", roomId: rid };
-        if(doc.players?.p2?.uid === uid) return { role:"p2", roomId: rid };
-
-        throw new Error("Join failed");
+        throw new Error("Join failed. Try again.");
       }
 
-      function subscribeRoom(roomId, cb){
-        const r = roomRef(cleanRoomId(roomId));
-        const handler = (snap) => cb(snap.exists() ? snap.val() : null);
-        onValue(r, handler);
-        return () => off(r, "value", handler);
+      async function writeRoomCAS(roomId, expectedVersion, nextDoc){
+        const { data, error } = await supabase
+          .from("rooms")
+          .update({ doc: nextDoc, version: expectedVersion + 1, updated_at: new Date().toISOString() })
+          .eq("room_id", roomId)
+          .eq("version", expectedVersion)
+          .select("room_id")
+          .maybeSingle();
+
+        if(error) throw error;
+        return !!data;
       }
 
       async function patchRoom(roomId, patchFn){
         const rid = cleanRoomId(roomId);
-        const r = roomRef(rid);
-        const res = await runTransaction(r, (doc) => {
-          if(!doc) return doc;
-          const next = patchFn(deepClone(doc));
-          next.updatedAt = serverTimestamp();
-          return next;
-        }, { applyLocally: false });
+        for(let attempt=0; attempt<10; attempt++){
+          const row = await readRoom(rid);
+          if(!row) throw new Error("Room not found");
 
-        if(!res.committed) throw new Error("Update failed (conflict). Try again.");
+          const doc = deepClone(row.doc);
+          const next = patchFn(doc);
+          next.updatedAt = Date.now();
+
+          const ok = await writeRoomCAS(rid, row.version, next);
+          if(ok) return;
+          // else retry
+        }
+        throw new Error("Update failed (conflict). Try again.");
       }
 
       async function leaveRoom(roomId, uid){
         const rid = cleanRoomId(roomId);
-        const r = roomRef(rid);
 
-        await runTransaction(r, (doc) => {
-          if(!doc) return doc;
+        for(let attempt=0; attempt<8; attempt++){
+          const row = await readRoom(rid);
+          if(!row) return;
 
+          const doc = deepClone(row.doc);
           const p1 = doc.players?.p1?.uid;
           const p2 = doc.players?.p2?.uid;
 
           if(p1 === uid){
-            // host leaves -> delete room
-            return null;
+            // host leaves => delete
+            const { error } = await supabase.from("rooms").delete().eq("room_id", rid);
+            if(error) throw error;
+            return;
           }
+
           if(p2 === uid){
             doc.players.p2 = {uid:"", name:""};
             doc.status = "waiting";
@@ -828,11 +826,53 @@
             doc.state.pickAnswered = {p1:false,p2:false};
             doc.state.pickTurn = "p1";
 
-            doc.updatedAt = serverTimestamp();
-            return doc;
+            doc.updatedAt = Date.now();
+            const ok = await writeRoomCAS(rid, row.version, doc);
+            if(ok) return;
+          }else{
+            return;
           }
-          return doc;
-        }, { applyLocally: false });
+        }
+      }
+
+      function subscribeRoom(roomId, cb){
+        const rid = cleanRoomId(roomId);
+
+        // initial fetch
+        let cancelled = false;
+        (async ()=>{
+          try{
+            const row = await readRoom(rid);
+            if(cancelled) return;
+            cb(row ? row.doc : null);
+          }catch(e){
+            console.error(e);
+            if(cancelled) return;
+            cb(null);
+          }
+        })();
+
+        // realtime
+        const channel = supabase
+          .channel("room-" + rid)
+          .on("postgres_changes", { event: "*", schema: "public", table: "rooms", filter: `room_id=eq.${rid}` }, async (payload) => {
+            try{
+              if(payload.eventType === "DELETE"){
+                cb(null);
+                return;
+              }
+              const row = await readRoom(rid);
+              cb(row ? row.doc : null);
+            }catch(e){
+              console.error(e);
+            }
+          })
+          .subscribe();
+
+        return () => {
+          cancelled = true;
+          supabase.removeChannel(channel);
+        };
       }
 
       return { createRoom, joinRoom, subscribeRoom, patchRoom, leaveRoom };
@@ -957,7 +997,6 @@
         el("nhieNever").disabled = !myTurn;
       }
 
-      // ✅ blue only when selected
       const sel = room.state.last[turn];
       el("nhieHave").classList.toggle("selected", sel === "I Have");
       el("nhieNever").classList.toggle("selected", sel === "I Never");
@@ -990,7 +1029,6 @@
         el("opt2Btn").disabled = !myTurn;
       }
 
-      // ✅ blue only on selected option for current turn
       const sel = room.state.pickLast[t];
       const o1 = el("opt1Btn").textContent || "Option 1";
       const o2 = el("opt2Btn").textContent || "Option 2";
@@ -1035,7 +1073,6 @@
       setText("p1Count", room.state.counts.p1 || 0);
       setText("p2Count", room.state.counts.p2 || 0);
 
-      // Active glow only in NHIE
       const nhieDone = room.state.nhieAnswered.p1 && room.state.nhieAnswered.p2;
       el("scoreP1").classList.toggle("active", room.mode==="nhie" && room.state.nhieTurn==="p1" && !nhieDone);
       el("scoreP2").classList.toggle("active", room.mode==="nhie" && room.state.nhieTurn==="p2" && !nhieDone);
@@ -1070,7 +1107,6 @@
         updatePickUI(room);
       }
 
-      // Host only
       el("next").disabled = !(client.role==="p1");
       el("reset").disabled = !(client.role==="p1");
     }
@@ -1081,7 +1117,6 @@
     async function createRoomFlow(){
       showHomeError("");
       const myName = clampName(el("myNameCreate").value, "Player 1");
-
       try{
         const q = deepClone(questions);
         const { roomId, role } = await RoomAPI.createRoom({
@@ -1089,10 +1124,8 @@
           hostName: myName,
           q
         });
-
         client.role = role;
         client.roomId = roomId;
-
         setText("topSub", "Room created. Share link and wait for friend.");
         subscribeRoom(roomId);
       }catch(err){
@@ -1111,7 +1144,6 @@
         const { role, roomId: rid } = await RoomAPI.joinRoom({ roomId, uid: client.uid, name: myName });
         client.role = role;
         client.roomId = rid;
-
         setText("topSub", "Joined room. Waiting for host to start.");
         subscribeRoom(rid);
       }catch(err){
@@ -1127,7 +1159,6 @@
 
       try{
         const q = deepClone(questions);
-
         await RoomAPI.patchRoom(client.roomId, (doc) => {
           const both = doc.players.p1.uid && doc.players.p2.uid;
           if(!both) return doc;
@@ -1174,7 +1205,6 @@
 
       await RoomAPI.patchRoom(client.roomId, (doc) => {
         doc.mode = mode;
-
         const q = doc.questions || {nhie:[], pick:[]};
         const len = mode === "nhie" ? (q.nhie||[]).length : (q.pick||[]).length;
         doc.order = buildOrder(len);
@@ -1187,7 +1217,6 @@
         doc.state.pickLast = {p1:"—",p2:"—"};
         doc.state.pickAnswered = {p1:false,p2:false};
         doc.state.pickTurn = "p1";
-
         return doc;
       });
     }
@@ -1325,13 +1354,12 @@
 
     function openSheet(){
       el("overlay").classList.add("show");
-      const unlocked = localStorage.getItem("admin_unlocked_firebase")==="1";
+      const unlocked = localStorage.getItem("admin_unlocked_supabase")==="1";
       el("adminLogin").style.display = unlocked ? "none" : "block";
       el("adminPanel").style.display = unlocked ? "block" : "none";
       if(unlocked) renderLists();
       el("adminPass").value = "";
       el("adminPass").setAttribute("readonly","readonly");
-      // ✅ prevents suggestion popping instantly
       setTimeout(()=>el("adminPass").blur(), 0);
     }
     function closeSheet(){ el("overlay").classList.remove("show"); }
@@ -1371,14 +1399,13 @@
     el("openAdmin").addEventListener("click", openSheet);
     el("closeSheet").addEventListener("click", closeSheet);
 
-    // ✅ only unlock readonly when user actually clicks inside
     el("adminPass").addEventListener("pointerdown", ()=> el("adminPass").removeAttribute("readonly"));
     el("adminPass").addEventListener("focus", ()=> el("adminPass").removeAttribute("readonly"));
 
     el("unlock").addEventListener("click", ()=>{
       const pass = (el("adminPass").value || "").trim();
       if(pass === ADMIN_PASSWORD){
-        localStorage.setItem("admin_unlocked_firebase","1");
+        localStorage.setItem("admin_unlocked_supabase","1");
         el("adminLogin").style.display = "none";
         el("adminPanel").style.display = "block";
         renderLists();
@@ -1427,7 +1454,7 @@
     el("wipeAll").addEventListener("click", ()=>{
       if(!confirm("Reset EVERYTHING?")) return;
       localStorage.removeItem(QKEY);
-      localStorage.removeItem("admin_unlocked_firebase");
+      localStorage.removeItem("admin_unlocked_supabase");
       location.reload();
     });
 
@@ -1445,9 +1472,20 @@
     });
 
     // ---------------------------
-    // Boot (Auth + URL join hint)
+    // Boot (Supabase auth)
     // ---------------------------
-    function bootUI(){
+    async function ensureAnonAuth(){
+      const { data: sess } = await supabase.auth.getSession();
+      if(sess?.session?.user?.id) return sess.session.user.id;
+
+      // anonymous sign-in (Supabase supports anonymous users on projects where enabled)
+      // If your project doesn't allow anonymous, this will fail.
+      const { data, error } = await supabase.auth.signInAnonymously();
+      if(error) throw error;
+      return data.user.id;
+    }
+
+    async function boot(){
       loadQuestions();
       setScreen("screenHome");
 
@@ -1458,20 +1496,17 @@
         setText("topSub", "Room link opened. Enter your name & Join.");
         setTimeout(()=> el("myNameJoin").focus(), 250);
       }
+
+      try{
+        client.uid = await ensureAnonAuth();
+        el("authInfo").textContent = "Connected (uid: " + client.uid.slice(0,8) + "…)";
+      }catch(e){
+        console.error(e);
+        showHomeError("Auth error: " + (e?.message || "anonymous auth not enabled"));
+      }
     }
 
-    // ✅ Anonymous auth
-    signInAnonymously(auth).catch((e)=>{
-      console.error(e);
-      showHomeError("Auth error: " + (e?.message || "unknown"));
-    });
-
-    onAuthStateChanged(auth, (user) => {
-      if(!user) return;
-      client.uid = user.uid;
-      el("authInfo").textContent = "Connected (uid: " + user.uid.slice(0,8) + "…)";
-      bootUI();
-    });
+    boot();
   </script>
 </body>
 </html>
