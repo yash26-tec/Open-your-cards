@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>2P Party Game (Supabase Rooms) — Final Ready</title>
+  <title>2P Party Game (Supabase Rooms) — FINAL (id PK)</title>
   <style>
     :root{
       --bg:#f5f9ff; --card:#ffffff; --stroke:#dbe7ff;
@@ -13,22 +13,17 @@
       --r:18px;
     }
     *{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
-
     body{
-      margin:0;
-      min-height:100dvh;
+      margin:0; min-height:100dvh;
       background:
         radial-gradient(1100px 520px at 50% -25%, rgba(37,99,235,.22), transparent 55%),
         radial-gradient(700px 380px at 0% 0%, rgba(29,78,216,.10), transparent 60%),
         linear-gradient(180deg,var(--bg),#fff);
       color:var(--txt);
-      display:flex;
-      justify-content:center;
-      align-items:flex-start;
+      display:flex; justify-content:center; align-items:flex-start;
       padding:14px;
     }
     .app{width:min(520px,100%);display:grid;gap:12px;padding-bottom:96px}
-
     .topbar{
       background:rgba(255,255,255,.92);
       border:1px solid var(--stroke);
@@ -118,14 +113,12 @@
       transition:opacity .18s ease;
     }
     .btn:hover::after{opacity:.55}
-
     .btn.selected{
       background:linear-gradient(135deg,var(--blue),var(--blue2));
       color:#fff;border:0;
       box-shadow:0 14px 30px rgba(29,78,216,.26);
     }
     .btn.selected::after{opacity:.22}
-
     .btn.ghost{background:linear-gradient(180deg,#f1f7ff,#ffffff)}
     .btn.danger{
       background:linear-gradient(180deg,#fff5f7,#ffffff);
@@ -161,7 +154,6 @@
     .bottomInner{width:min(520px,100%);display:flex;gap:10px}
     .bottomInner .btn{flex:1}
 
-    /* Modal bottom sheet */
     .overlay{position:fixed;inset:0;background:rgba(15,23,42,.45);display:none;align-items:flex-end;justify-content:center;padding:14px}
     .overlay.show{display:flex}
     .sheet{
@@ -190,7 +182,6 @@
     .tiny{font-size:12px;color:var(--muted)}
     .mono{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace}
 
-    /* Scoreboard */
     .scoreGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
     .scoreCard{
       border:1px solid var(--stroke);
@@ -217,7 +208,6 @@
       pointer-events:none;
     }
 
-    /* NHIE selected display */
     .nhieSelectedGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
     .selCard{
       border:1px solid var(--stroke);
@@ -225,19 +215,14 @@
       padding:12px;
       background:linear-gradient(180deg,#ffffff,#f8fbff);
       box-shadow:0 8px 18px rgba(15,23,42,.05);
-      display:grid;
-      gap:8px;
+      display:grid; gap:8px;
     }
     .selHeader{display:flex;justify-content:space-between;align-items:center;gap:10px}
     .selMini{font-size:12px;color:var(--muted);font-weight:900}
     .selBadge{
-      font-size:12px;
-      padding:6px 10px;
-      border-radius:999px;
-      border:1px solid var(--stroke);
-      background:#fff;
-      font-weight:1000;
-      color:var(--muted);
+      font-size:12px; padding:6px 10px; border-radius:999px;
+      border:1px solid var(--stroke); background:#fff;
+      font-weight:1000; color:var(--muted);
     }
     .selBadge.done{
       border:1px solid rgba(29,78,216,.25);
@@ -245,13 +230,9 @@
       color:#0b2a7a;
     }
     .selValue{
-      font-size:16px;
-      font-weight:1000;
-      line-height:1.2;
-      padding:12px 12px;
-      border-radius:14px;
-      border:1px solid var(--stroke);
-      background:#fff;
+      font-size:16px;font-weight:1000;line-height:1.2;
+      padding:12px 12px;border-radius:14px;
+      border:1px solid var(--stroke); background:#fff;
     }
     .selValue.selected{
       border:1px solid rgba(29,78,216,.25);
@@ -259,22 +240,17 @@
       color:#0b2a7a;
     }
 
-    /* Action board */
     .actionBoard{
-      margin-top:10px;
-      border:1px solid var(--stroke);
-      border-radius:18px;
-      padding:12px;
+      margin-top:10px;border:1px solid var(--stroke);
+      border-radius:18px;padding:12px;
       background:linear-gradient(180deg,#ffffff,#f7fbff);
-      display:grid;
-      gap:10px;
+      display:grid; gap:10px;
     }
     .actionHeader{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
     .status{font-size:12px;color:var(--muted)}
     .bigRow{display:flex;gap:10px}
     .bigRow .btn{flex:1;padding:14px;border-radius:18px;font-size:14px}
 
-    /* Pick One bigger selected display */
     .pickSelectedGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
     .pickSelCard{
       border:1px solid var(--stroke);
@@ -285,14 +261,8 @@
     }
     .pickSelName{font-weight:1000;font-size:13px}
     .pickSelValue{
-      margin-top:8px;
-      font-size:18px;
-      font-weight:1000;
-      line-height:1.2;
-      padding:12px 12px;
-      border-radius:14px;
-      border:1px solid var(--stroke);
-      background:#fff;
+      margin-top:8px;font-size:18px;font-weight:1000;line-height:1.2;
+      padding:12px 12px;border-radius:14px;border:1px solid var(--stroke);background:#fff;
     }
     .pickSelValue.selected{
       border:1px solid rgba(29,78,216,.25);
@@ -300,7 +270,6 @@
       color:#0b2a7a;
     }
 
-    /* Screens */
     .screen{display:none}
     .screen.show{display:block}
 
@@ -587,7 +556,7 @@
 
   <script type="module">
     // ===========================
-    // ✅ SUPABASE CONFIG (EDIT)
+    // ✅ SUPABASE CONFIG
     // ===========================
     const SUPABASE_URL = "https://xgiryhgysebcskkyhmej.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable_7WgNVc5MkpgJcoCj3iQArw_J4zcgtsg";
@@ -605,7 +574,6 @@
     const show = (id) => el(id).classList.add("show");
     const hide = (id) => el(id).classList.remove("show");
     const setText = (id, v) => el(id).textContent = v;
-
     const clampName = (s, fallback) => (String(s||"").trim() || fallback).slice(0, 24);
 
     function cleanRoomId(s){
@@ -690,7 +658,6 @@
           last: {p1:"—",p2:"—"},
           nhieTurn: "p1",
           nhieAnswered: {p1:false,p2:false},
-
           pickLast: {p1:"—",p2:"—"},
           pickTurn: "p1",
           pickAnswered: {p1:false,p2:false},
@@ -700,17 +667,15 @@
     }
 
     // ---------------------------
-    // Supabase Room API
-    // - Uses rooms(room_id PK, doc jsonb, version int)
-    // - update uses optimistic concurrency: version match
+    // Supabase Room API (rooms.id PK)
     // ---------------------------
     const RoomAPI = (() => {
       async function readRoom(roomId){
         const rid = cleanRoomId(roomId);
         const { data, error } = await supabase
           .from("rooms")
-          .select("room_id, doc, version, updated_at")
-          .eq("room_id", rid)
+          .select("id, doc, version, updated_at")
+          .eq("id", rid)
           .maybeSingle();
         if(error) throw error;
         return data || null;
@@ -722,10 +687,22 @@
           const doc = makeNewRoomDoc({roomId, hostUid, hostName, q});
           const { error } = await supabase
             .from("rooms")
-            .insert({ room_id: roomId, doc, version: 0 });
+            .insert({ id: roomId, doc, version: 0 });
           if(!error) return { roomId, role:"p1" };
         }
         throw new Error("Could not create room. Try again.");
+      }
+
+      async function writeRoomCAS(roomId, expectedVersion, nextDoc){
+        const { data, error } = await supabase
+          .from("rooms")
+          .update({ doc: nextDoc, version: expectedVersion + 1, updated_at: new Date().toISOString() })
+          .eq("id", roomId)
+          .eq("version", expectedVersion)
+          .select("id")
+          .maybeSingle();
+        if(error) throw error;
+        return !!data;
       }
 
       async function joinRoom({roomId, uid, name}){
@@ -736,7 +713,6 @@
 
           const doc = row.doc;
 
-          // rejoin allowed
           if(doc.players?.p1?.uid === uid){
             doc.players.p1.name = name || doc.players.p1.name;
             doc.updatedAt = Date.now();
@@ -752,30 +728,16 @@
             continue;
           }
 
-          // if full
           if(doc.players?.p2?.uid) throw new Error("Room is full");
 
-          // join as p2
           doc.players.p2.uid = uid;
           doc.players.p2.name = name;
           doc.updatedAt = Date.now();
+
           const ok = await writeRoomCAS(rid, row.version, doc);
           if(ok) return { role:"p2", roomId: rid };
         }
         throw new Error("Join failed. Try again.");
-      }
-
-      async function writeRoomCAS(roomId, expectedVersion, nextDoc){
-        const { data, error } = await supabase
-          .from("rooms")
-          .update({ doc: nextDoc, version: expectedVersion + 1, updated_at: new Date().toISOString() })
-          .eq("room_id", roomId)
-          .eq("version", expectedVersion)
-          .select("room_id")
-          .maybeSingle();
-
-        if(error) throw error;
-        return !!data;
       }
 
       async function patchRoom(roomId, patchFn){
@@ -790,14 +752,12 @@
 
           const ok = await writeRoomCAS(rid, row.version, next);
           if(ok) return;
-          // else retry
         }
         throw new Error("Update failed (conflict). Try again.");
       }
 
       async function leaveRoom(roomId, uid){
         const rid = cleanRoomId(roomId);
-
         for(let attempt=0; attempt<8; attempt++){
           const row = await readRoom(rid);
           if(!row) return;
@@ -807,8 +767,7 @@
           const p2 = doc.players?.p2?.uid;
 
           if(p1 === uid){
-            // host leaves => delete
-            const { error } = await supabase.from("rooms").delete().eq("room_id", rid);
+            const { error } = await supabase.from("rooms").delete().eq("id", rid);
             if(error) throw error;
             return;
           }
@@ -838,7 +797,6 @@
       function subscribeRoom(roomId, cb){
         const rid = cleanRoomId(roomId);
 
-        // initial fetch
         let cancelled = false;
         (async ()=>{
           try{
@@ -852,21 +810,18 @@
           }
         })();
 
-        // realtime
         const channel = supabase
           .channel("room-" + rid)
-          .on("postgres_changes", { event: "*", schema: "public", table: "rooms", filter: `room_id=eq.${rid}` }, async (payload) => {
-            try{
-              if(payload.eventType === "DELETE"){
-                cb(null);
-                return;
-              }
-              const row = await readRoom(rid);
-              cb(row ? row.doc : null);
-            }catch(e){
-              console.error(e);
+          .on("postgres_changes",
+            { event: "*", schema: "public", table: "rooms", filter: `id=eq.${rid}` },
+            async (payload) => {
+              try{
+                if(payload.eventType === "DELETE"){ cb(null); return; }
+                const row = await readRoom(rid);
+                cb(row ? row.doc : null);
+              }catch(e){ console.error(e); }
             }
-          })
+          )
           .subscribe();
 
         return () => {
@@ -881,18 +836,11 @@
     // ---------------------------
     // Client state
     // ---------------------------
-    const client = {
-      uid: "",
-      roomId: "",
-      role: "",
-      room: null,
-      unsub: null,
-    };
+    const client = { uid:"", roomId:"", role:"", room:null, unsub:null };
 
     function setScreen(name){
       ["screenHome","screenLobby","screenGame"].forEach(id => hide(id));
       show(name);
-
       const isGame = name === "screenGame";
       el("reset").disabled = !isGame;
       el("next").disabled  = !isGame;
@@ -937,11 +885,9 @@
     }
 
     // ---------------------------
-    // Render (room.questions is source of truth)
+    // Render
     // ---------------------------
-    function getQ(room){
-      return room.questions || {nhie:[], pick:[]};
-    }
+    function getQ(room){ return room.questions || {nhie:[], pick:[]}; }
 
     function getCurrentItem(room){
       const q = getQ(room);
@@ -1037,7 +983,6 @@
     }
 
     function renderFromRoom(room){
-      // Lobby
       setText("lobbyRoomId", room.roomId);
       setText("lobbyP1", room.players.p1.name || "Waiting…");
       setText("lobbyP2", room.players.p2.name || "Waiting…");
@@ -1057,10 +1002,8 @@
         setScreen("screenGame");
       }
 
-      // Game bits
       setText("gameRoomId", room.roomId);
       setText("gameMeRole", client.role || "—");
-
       if(room.status !== "playing") return;
 
       setText("p1Name", room.players.p1.name || "Player 1");
@@ -1192,9 +1135,7 @@
         if(client.roomId){
           await RoomAPI.leaveRoom(client.roomId, client.uid);
         }
-      }catch(e){
-        console.error(e);
-      }
+      }catch(e){ console.error(e); }
       cleanupRoom();
       setScreen("screenHome");
     }
@@ -1223,7 +1164,6 @@
 
     async function nhieSelect(answerText){
       if(!client.roomId) return;
-
       await RoomAPI.patchRoom(client.roomId, (doc) => {
         if(doc.status !== "playing") return doc;
         if(doc.mode !== "nhie") return doc;
@@ -1249,7 +1189,6 @@
 
     async function pickSelect(optionText){
       if(!client.roomId) return;
-
       await RoomAPI.patchRoom(client.roomId, (doc) => {
         if(doc.status !== "playing") return doc;
         if(doc.mode !== "pick") return doc;
@@ -1472,14 +1411,11 @@
     });
 
     // ---------------------------
-    // Boot (Supabase auth)
+    // Boot (Supabase anonymous auth)
     // ---------------------------
     async function ensureAnonAuth(){
       const { data: sess } = await supabase.auth.getSession();
       if(sess?.session?.user?.id) return sess.session.user.id;
-
-      // anonymous sign-in (Supabase supports anonymous users on projects where enabled)
-      // If your project doesn't allow anonymous, this will fail.
       const { data, error } = await supabase.auth.signInAnonymously();
       if(error) throw error;
       return data.user.id;
@@ -1506,6 +1442,17 @@
       }
     }
 
+    // ---------------------------
+    // Screens + host-only buttons
+    // ---------------------------
+    function setHostButtons(){
+      el("next").disabled = !(client.role==="p1");
+      el("reset").disabled = !(client.role==="p1");
+    }
+
+    // ---------------------------
+    // (rest) - already wired
+    // ---------------------------
     boot();
   </script>
 </body>
