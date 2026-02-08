@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>2P Party Game (Firebase Rooms) — FULL & FINAL (Presence + Kick P2 ✅)</title>
+  <title>2P Party Game (Firebase Rooms) — FULL & FINAL ✅</title>
   <style>
     :root{
       --bg:#f5f9ff; --card:#ffffff; --stroke:#dbe7ff;
@@ -13,6 +13,7 @@
       --r:18px;
     }
     *{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
+
     body{
       margin:0;
       min-height:100dvh;
@@ -406,8 +407,7 @@
 
         <div class="row" style="justify-content:space-between">
           <button class="btn danger" id="leaveRoom">Leave</button>
-
-          <div class="row" style="gap:10px; flex-wrap:nowrap;">
+          <div class="row" style="gap:10px;">
             <button class="btn danger" id="kickP2" style="display:none;">Kick P2</button>
             <button class="btn selected" id="startGame" disabled>Start Game</button>
           </div>
@@ -591,8 +591,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
     import {
-      getDatabase, ref, onValue, off, get, runTransaction, serverTimestamp,
-      set, remove, push, onDisconnect
+      getDatabase, ref, onValue, off, get, runTransaction, serverTimestamp, onDisconnect
     } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
     import {
       getAuth, signInAnonymously, onAuthStateChanged,
@@ -646,9 +645,7 @@
       for(let i=0;i<6;i++) out += chars[Math.floor(Math.random()*chars.length)];
       return out;
     }
-
     function deepClone(x){ return JSON.parse(JSON.stringify(x)); }
-
     function shuffle(arr){
       for(let i=arr.length-1;i>0;i--){
         const j = Math.floor(Math.random()*(i+1));
@@ -661,7 +658,7 @@
       return order;
     }
 
-    // ✅ SESSION TOKEN (helps same device reclaim)
+    // ✅ SESSION TOKEN (used for same-device reclaim)
     function makeToken(){
       return Math.random().toString(36).slice(2) + "-" + Date.now().toString(36);
     }
@@ -708,7 +705,7 @@
     }
 
     // ---------------------------
-    // Room doc model (with conns presence map)
+    // Room doc model
     // ---------------------------
     function makeNewRoomDoc({roomId, hostUid, hostName, q, hostSession}){
       const now = Date.now();
@@ -720,11 +717,10 @@
           p1: { uid: hostUid, name: hostName, session: hostSession, lastSeen: now },
           p2: { uid: "", name: "", session: "", lastSeen: 0 }
         },
-        conns: {}, // uid -> connId -> timestamp
         mode: "nhie",
         idx: 0,
         order: buildOrder((q?.nhie||[]).length),
-        questions: q || {nhie:[], pick:[]}, // stored in room
+        questions: q || {nhie:[], pick:[]},
         state: {
           counts: {p1:0,p2:0},
           last: {p1:"—",p2:"—"},
@@ -751,7 +747,7 @@
           const r = roomRef(roomId);
 
           const res = await runTransaction(r, (current) => {
-            if(current !== null) return; // exists => abort
+            if(current !== null) return;
             return makeNewRoomDoc({roomId, hostUid, hostName, q, hostSession: session});
           }, { applyLocally: false });
 
@@ -762,7 +758,7 @@
         throw new Error("Could not create room. Try again.");
       }
 
-      // ✅ JOIN using presence conns (fixes stuck "Room full")
+      // ✅ JOIN FIX: stale reclaim + same-session reclaim (solves “fresh join => room full”)
       async function joinRoom({roomId, uid, name, session}){
         const rid = extractRoomIdFromInput(roomId);
         if(!rid) throw new Error("Please enter Room code (example: AB12CD) OR paste full link.");
@@ -771,22 +767,27 @@
         const pre = await get(r);
         if(!pre.exists()) throw new Error("Room not found");
 
+        const STALE_MS = 20 * 1000; // ✅ 20 sec (aggressive to prevent lock)
+
         const res = await runTransaction(r, (doc) => {
           if(!doc) return;
 
-          doc.players = doc.players || { p1:{uid:"",name:"",session:"",lastSeen:0}, p2:{uid:"",name:"",session:"",lastSeen:0} };
-          doc.conns = doc.conns || {};
+          doc.players = doc.players || {
+            p1:{uid:"",name:"",session:"",lastSeen:0},
+            p2:{uid:"",name:"",session:"",lastSeen:0}
+          };
+
           const now = Date.now();
 
-          // rejoin by uid
-          if(doc.players?.p1?.uid === uid){
+          // rejoin by uid (always allow)
+          if(doc.players.p1.uid === uid){
             doc.players.p1.name = name || doc.players.p1.name;
             doc.players.p1.session = doc.players.p1.session || session;
             doc.players.p1.lastSeen = now;
             doc.updatedAt = serverTimestamp();
             return doc;
           }
-          if(doc.players?.p2?.uid === uid){
+          if(doc.players.p2.uid === uid){
             doc.players.p2.name = name || doc.players.p2.name;
             doc.players.p2.session = doc.players.p2.session || session;
             doc.players.p2.lastSeen = now;
@@ -794,23 +795,25 @@
             return doc;
           }
 
-          const p2uid = doc.players?.p2?.uid || "";
-          const p2session = doc.players?.p2?.session || "";
+          const p2uid = doc.players.p2.uid || "";
+          const p2session = doc.players.p2.session || "";
+          const p2last = Number(doc.players.p2.lastSeen || 0);
 
-          const p2Active = p2uid
-            ? (doc.conns?.[p2uid] && Object.keys(doc.conns[p2uid]).length > 0)
-            : false;
+          const isEmpty = !p2uid;
+          const sameSession = !!p2uid && p2session === session;
+          const isStale = !!p2uid && (now - p2last > STALE_MS);
 
-          const sameSessionReclaim = !!p2uid && !!p2session && (p2session === session);
-          const stuckSlot = !!p2uid && !p2Active; // p2 slot exists but no active connections
+          // If occupied and not reclaimable => full
+          if(!isEmpty && !sameSession && !isStale){
+            return; // abort
+          }
 
-          if(p2uid && !sameSessionReclaim && !stuckSlot) return; // abort (full)
-
-          // join / reclaim as p2
+          // join/reclaim as p2
           doc.players.p2.uid = uid;
           doc.players.p2.name = name;
           doc.players.p2.session = session;
           doc.players.p2.lastSeen = now;
+
           doc.updatedAt = serverTimestamp();
           return doc;
         }, { applyLocally: false });
@@ -857,9 +860,6 @@
           const p1 = doc.players?.p1?.uid;
           const p2 = doc.players?.p2?.uid;
 
-          doc.conns = doc.conns || {};
-          if(doc.conns[uid]) delete doc.conns[uid]; // best effort cleanup
-
           if(p1 === uid){
             return null; // host leaves -> delete room
           }
@@ -883,37 +883,7 @@
         }, { applyLocally: false });
       }
 
-      // ✅ Kick P2 (Host only)
-      async function kickP2(roomId){
-        const rid = extractRoomIdFromInput(roomId);
-        const r = roomRef(rid);
-
-        await runTransaction(r, (doc) => {
-          if(!doc) return doc;
-
-          doc.conns = doc.conns || {};
-          const p2uid = doc.players?.p2?.uid || "";
-
-          if(p2uid && doc.conns[p2uid]) delete doc.conns[p2uid];
-
-          doc.players.p2 = {uid:"", name:"", session:"", lastSeen:0};
-          doc.status = "waiting";
-          doc.idx = 0;
-
-          doc.state.last = {p1:"—",p2:"—"};
-          doc.state.nhieAnswered = {p1:false,p2:false};
-          doc.state.nhieTurn = "p1";
-
-          doc.state.pickLast = {p1:"—",p2:"—"};
-          doc.state.pickAnswered = {p1:false,p2:false};
-          doc.state.pickTurn = "p1";
-
-          doc.updatedAt = serverTimestamp();
-          return doc;
-        }, { applyLocally: false });
-      }
-
-      return { createRoom, joinRoom, subscribeRoom, patchRoom, leaveRoom, kickP2 };
+      return { createRoom, joinRoom, subscribeRoom, patchRoom, leaveRoom };
     })();
 
     // ---------------------------
@@ -925,57 +895,45 @@
       role: "",
       room: null,
       unsub: null,
-      session: sessionToken,
-      connId: ""
+      session: sessionToken
     };
 
-    // ---------------------------
-    // Presence using conns/{uid}/{connId}
-    // ---------------------------
+    // ✅ Presence: onDisconnect clears slot + heartbeat updates lastSeen
     let presenceTimer = null;
-
-    async function stopPresence(){
+    function stopPresence(){
       if(presenceTimer) clearInterval(presenceTimer);
       presenceTimer = null;
-
-      try{
-        if(client.roomId && client.uid && client.connId){
-          const rid = extractRoomIdFromInput(client.roomId);
-          await remove(ref(db, `rooms/${rid}/conns/${client.uid}/${client.connId}`));
-        }
-      }catch{}
-      client.connId = "";
     }
 
-    async function setupPresence(roomId){
-      await stopPresence();
+    function setupPresence(roomId, role){
+      stopPresence();
       const rid = extractRoomIdFromInput(roomId);
-      if(!rid || !client.uid) return;
+      if(!rid || !role) return;
 
-      const connRef = push(ref(db, `rooms/${rid}/conns/${client.uid}`));
-      client.connId = connRef.key;
+      const roomPath = ref(db, `rooms/${rid}`);
+      const playerPath = ref(db, `rooms/${rid}/players/${role}`);
 
-      await set(connRef, Date.now());
-      onDisconnect(connRef).remove();
+      if(role === "p1"){
+        onDisconnect(roomPath).remove(); // host disconnect -> room delete
+      } else {
+        onDisconnect(playerPath).set({ uid:"", name:"", session:"", lastSeen:0 }); // p2 disconnect -> free slot
+      }
 
       presenceTimer = setInterval(async () => {
         try{
-          await set(ref(db, `rooms/${rid}/conns/${client.uid}/${client.connId}`), Date.now());
-          // light heartbeat on lastSeen
           await RoomAPI.patchRoom(rid, (doc) => {
-            const r = client.role;
-            if(doc?.players?.[r]?.uid === client.uid){
-              doc.players[r].lastSeen = Date.now();
+            if(!doc?.players?.[role]) return doc;
+            // update only if still same uid
+            if(doc.players[role].uid === client.uid){
+              doc.players[role].lastSeen = Date.now();
+              doc.players[role].session = doc.players[role].session || client.session;
             }
             return doc;
           });
         }catch{}
-      }, 12000);
+      }, 5000); // ✅ fast heartbeat
     }
 
-    // ---------------------------
-    // Screen helpers
-    // ---------------------------
     function setScreen(name){
       ["screenHome","screenLobby","screenGame"].forEach(id => hide(id));
       show(name);
@@ -1001,8 +959,8 @@
       return u.toString();
     }
 
-    async function cleanupRoom(){
-      await stopPresence();
+    function cleanupRoom(){
+      stopPresence();
       if(client.unsub) client.unsub();
       client.unsub = null;
       client.room = null;
@@ -1012,6 +970,8 @@
 
     function subscribeRoom(roomId){
       if(client.unsub) client.unsub();
+      setupPresence(roomId, client.role);
+
       client.unsub = RoomAPI.subscribeRoom(roomId, (doc) => {
         client.room = doc;
         if(!doc){
@@ -1028,7 +988,6 @@
     // Render
     // ---------------------------
     function getQ(room){ return room.questions || {nhie:[], pick:[]}; }
-
     function getCurrentItem(room){
       const q = getQ(room);
       const list = room.mode === "nhie" ? (q.nhie||[]) : (q.pick||[]);
@@ -1036,14 +995,12 @@
       const realIdx = room.order?.[room.idx] ?? 0;
       return list[realIdx] ?? null;
     }
-
     function setProgress(room){
       const q = getQ(room);
       const total = room.mode === "nhie" ? (q.nhie||[]).length : (q.pick||[]).length;
       const pct = total ? Math.round(((room.idx+1)/total)*100) : 0;
       el("progFill").style.width = pct + "%";
     }
-
     function setModeUI(room){
       el("tabNhie").classList.toggle("active", room.mode === "nhie");
       el("tabPick").classList.toggle("active", room.mode === "pick");
@@ -1123,7 +1080,6 @@
     }
 
     function renderFromRoom(room){
-      // Lobby
       setText("lobbyRoomId", room.roomId);
       setText("lobbyP1", room.players.p1.name || "Waiting…");
       setText("lobbyP2", room.players.p2.name || "Waiting…");
@@ -1133,10 +1089,9 @@
       const bothJoined = !!(room.players.p1.uid && room.players.p2.uid);
       el("startGame").disabled = !(bothJoined && client.role === "p1");
 
-      // ✅ Kick button only for Host when P2 exists
-      const canKick = (client.role === "p1") && !!room.players?.p2?.uid;
-      el("kickP2").style.display = canKick ? "inline-flex" : "none";
-      el("kickP2").disabled = !canKick;
+      // ✅ Kick button (host only, when p2 exists)
+      const canKick = client.role === "p1" && !!room.players?.p2?.uid && room.status === "waiting";
+      el("kickP2").style.display = canKick ? "inline-block" : "none";
 
       if(room.status === "waiting"){
         setScreen("screenLobby");
@@ -1148,10 +1103,8 @@
         setScreen("screenGame");
       }
 
-      // Game bits
       setText("gameRoomId", room.roomId);
       setText("gameMeRole", client.role || "—");
-
       if(room.status !== "playing") return;
 
       setText("p1Name", room.players.p1.name || "Player 1");
@@ -1164,7 +1117,6 @@
       setText("p1Count", room.state.counts.p1 || 0);
       setText("p2Count", room.state.counts.p2 || 0);
 
-      // Active glow only in NHIE
       const nhieDone = room.state.nhieAnswered.p1 && room.state.nhieAnswered.p2;
       el("scoreP1").classList.toggle("active", room.mode==="nhie" && room.state.nhieTurn==="p1" && !nhieDone);
       el("scoreP2").classList.toggle("active", room.mode==="nhie" && room.state.nhieTurn==="p2" && !nhieDone);
@@ -1199,7 +1151,6 @@
         updatePickUI(room);
       }
 
-      // Host only
       el("next").disabled = !(client.role==="p1");
       el("reset").disabled = !(client.role==="p1");
     }
@@ -1225,7 +1176,6 @@
 
         setText("topSub", "Room created. Share link and wait for friend.");
         subscribeRoom(roomId);
-        await setupPresence(roomId);
       }catch(err){
         console.error(err);
         showHomeError(err?.message || "Failed to create room");
@@ -1246,13 +1196,11 @@
           name: myName,
           session: client.session
         });
-
         client.role = role;
         client.roomId = realRid;
 
         setText("topSub", "Joined room. Waiting for host to start.");
         subscribeRoom(realRid);
-        await setupPresence(realRid);
       }catch(err){
         console.error(err);
         showHomeError(err?.message || "Failed to join room");
@@ -1295,31 +1243,45 @@
       }
     }
 
-    async function leaveRoomFlow(){
-      try{
-        if(client.roomId){
-          // stop presence first (best effort) then leave
-          await stopPresence();
-          await RoomAPI.leaveRoom(client.roomId, client.uid);
-        }
-      }catch(e){
-        console.error(e);
-      }
-      await cleanupRoom();
-      setScreen("screenHome");
-    }
-
     async function kickP2Flow(){
+      showLobbyError("");
       if(client.role !== "p1") return;
       if(!client.roomId) return;
       if(!confirm("Kick Player 2?")) return;
 
       try{
-        await RoomAPI.kickP2(client.roomId);
+        await RoomAPI.patchRoom(client.roomId, (doc) => {
+          if(doc.status !== "waiting") return doc; // only in lobby
+          doc.players.p2 = {uid:"", name:"", session:"", lastSeen:0};
+
+          doc.state.last = {p1:"—",p2:"—"};
+          doc.state.nhieAnswered = {p1:false,p2:false};
+          doc.state.nhieTurn = "p1";
+
+          doc.state.pickLast = {p1:"—",p2:"—"};
+          doc.state.pickAnswered = {p1:false,p2:false};
+          doc.state.pickTurn = "p1";
+
+          doc.status = "waiting";
+          doc.idx = 0;
+          return doc;
+        });
+      }catch(err){
+        console.error(err);
+        showLobbyError(err?.message || "Kick failed");
+      }
+    }
+
+    async function leaveRoomFlow(){
+      try{
+        if(client.roomId){
+          await RoomAPI.leaveRoom(client.roomId, client.uid);
+        }
       }catch(e){
         console.error(e);
-        alert(e?.message || "Kick failed");
       }
+      cleanupRoom();
+      setScreen("screenHome");
     }
 
     async function setMode(mode){
@@ -1496,8 +1458,8 @@
     el("btnJoinRoom").addEventListener("click", () => joinRoomFlow(""));
 
     el("startGame").addEventListener("click", startGameFlow);
-    el("leaveRoom").addEventListener("click", leaveRoomFlow);
     el("kickP2").addEventListener("click", kickP2Flow);
+    el("leaveRoom").addEventListener("click", leaveRoomFlow);
 
     el("copyLink").addEventListener("click", async () => {
       try{
@@ -1627,17 +1589,6 @@
       client.uid = user.uid;
       el("authInfo").textContent = "Connected (uid: " + user.uid.slice(0,8) + "…)";
       bootUI();
-    });
-
-    // optional: cleanup presence on tab close (best-effort)
-    window.addEventListener("beforeunload", () => {
-      // can't await here; onDisconnect already handles the real cleanup
-      try{
-        if(client.roomId && client.uid && client.connId){
-          const rid = extractRoomIdFromInput(client.roomId);
-          remove(ref(db, `rooms/${rid}/conns/${client.uid}/${client.connId}`));
-        }
-      }catch{}
     });
   </script>
 </body>
