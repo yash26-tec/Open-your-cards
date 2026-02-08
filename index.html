@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>2P Party Game (Firebase Rooms) — FINAL (Room Full FIX ✅)</title>
+  <title>2P Party Game (Firebase Rooms) — FINAL (AUTO Force-Join ✅)</title>
   <style>
     :root{
       --bg:#f5f9ff; --card:#ffffff; --stroke:#dbe7ff;
@@ -13,18 +13,14 @@
       --r:18px;
     }
     *{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
-
     body{
-      margin:0;
-      min-height:100dvh;
+      margin:0; min-height:100dvh;
       background:
         radial-gradient(1100px 520px at 50% -25%, rgba(37,99,235,.22), transparent 55%),
         radial-gradient(700px 380px at 0% 0%, rgba(29,78,216,.10), transparent 60%),
         linear-gradient(180deg,var(--bg),#fff);
       color:var(--txt);
-      display:flex;
-      justify-content:center;
-      align-items:flex-start;
+      display:flex; justify-content:center; align-items:flex-start;
       padding:14px;
     }
     .app{width:min(520px,100%);display:grid;gap:12px;padding-bottom:96px}
@@ -586,11 +582,11 @@
     const db = getDatabase(app);
     const auth = getAuth(app);
 
-    // ✅ HARD FIX SETTINGS (anti "Room full" on first join)
-    const LEASE_MS = 20000;      // seat lease duration
-    const HEARTBEAT_MS = 5000;   // keep lease alive
-    const STALE_MS = 15000;      // lastSeen stale
-    const MAX_FUTURE = LEASE_MS * 3; // if leaseUntil too far in future => invalid
+    // ✅ FAST anti-ghost timings (reduces "Room full")
+    const LEASE_MS = 8000;       // seat expires quickly
+    const HEARTBEAT_MS = 3000;   // keep alive frequently
+    const STALE_MS = 8000;       // same as lease
+    const MAX_FUTURE = LEASE_MS * 3;
 
     let serverOffset = 0;
     let offsetReady = false;
@@ -734,7 +730,7 @@
         throw new Error("Could not create room. Try again.");
       }
 
-      // ✅ join with HARD self-heal (fix "Room full" on first join)
+      // ✅ AUTO FORCE-JOIN (NO BUTTON): if "Room full" but lobby is waiting => overwrite p2
       async function joinRoom({roomId, uid, name, session}){
         const rid = extractRoomIdFromInput(roomId);
         if(!rid) throw new Error("Enter room code or paste link.");
@@ -743,7 +739,8 @@
         const snap = await get(r);
         if(!snap.exists()) throw new Error("Room not found");
 
-        const res = await runTransaction(r, (doc) => {
+        // 1) Normal join attempt
+        const attempt = await runTransaction(r, (doc) => {
           if(!doc) return;
 
           doc.players ||= {
@@ -773,28 +770,19 @@
           const p2uid = String(p2.uid || "");
           const empty = !p2uid;
 
-          // same device reclaim (refresh / reopen)
           const sameDevice = !!p2uid && (p2.session === session) && doc.status === "waiting";
 
-          // ghost detection
           const leaseUntil = Number(p2.leaseUntil || 0);
           const lastSeen = Number(p2.lastSeen || 0);
 
-          const leaseExpired = !!p2uid && leaseUntil && leaseUntil < now;
-          const leaseMissingButUidSet = !!p2uid && !leaseUntil; // old/partial state
-          const leaseCrazyFuture = !!p2uid && leaseUntil > (now + MAX_FUTURE); // wrong clock state
-          const staleLastSeen = !!p2uid && lastSeen && (now - lastSeen > STALE_MS);
-          const lastSeenZero = !!p2uid && !lastSeen;
+          const expired = !!p2uid && leaseUntil && leaseUntil < now;
+          const stale = !!p2uid && lastSeen && (now - lastSeen > STALE_MS);
+          const missing = !!p2uid && (!leaseUntil || !lastSeen);
+          const crazyFuture = !!p2uid && leaseUntil > (now + MAX_FUTURE);
 
-          const ghost = doc.status === "waiting" && (leaseExpired || leaseMissingButUidSet || leaseCrazyFuture || staleLastSeen || lastSeenZero);
+          const reclaimable = doc.status === "waiting" && (expired || stale || missing || crazyFuture);
 
-          // if full and not reclaimable => abort
-          if(!empty && !sameDevice && !ghost) return;
-
-          // if ghost => clear then claim
-          if(ghost){
-            doc.players.p2 = {uid:"", name:"", session:"", lastSeen:0, claimedAt:0, leaseUntil:0};
-          }
+          if(!empty && !sameDevice && !reclaimable) return; // full => abort
 
           // claim p2
           doc.players.p2.uid = uid;
@@ -803,13 +791,33 @@
           doc.players.p2.lastSeen = now;
           doc.players.p2.claimedAt = now;
           doc.players.p2.leaseUntil = now + LEASE_MS;
-
           return doc;
-        }, { applyLocally: false });
+        }, { applyLocally:false });
 
-        if(!res.committed) throw new Error("Room is full");
-        const doc = res.snapshot.val();
-        if(doc.players?.p1?.uid === uid) return { role:"p1", roomId: rid };
+        if(attempt.committed){
+          const doc = attempt.snapshot.val();
+          if(doc.players?.p1?.uid === uid) return { role:"p1", roomId: rid };
+          return { role:"p2", roomId: rid };
+        }
+
+        // 2) AUTO force join fallback (only while waiting)
+        const force = await runTransaction(r, (doc) => {
+          if(!doc) return;
+          if(doc.status !== "waiting") return; // never force during game
+
+          const now = serverNow();
+
+          doc.players ||= { p1:{}, p2:{} };
+          doc.players.p2 = {
+            uid, name, session,
+            lastSeen: now,
+            claimedAt: now,
+            leaseUntil: now + LEASE_MS
+          };
+          return doc;
+        }, { applyLocally:false });
+
+        if(!force.committed) throw new Error("Room is full");
         return { role:"p2", roomId: rid };
       }
 
@@ -879,7 +887,7 @@
         onDisconnect(playerPath).set({ uid:"", name:"", session:"", lastSeen:0, claimedAt:0, leaseUntil:0 });
       }
 
-      // ✅ heartbeat extends lease
+      // heartbeat renew lease
       presenceTimer = setInterval(async () => {
         try{
           await RoomAPI.patchRoom(rid, (doc) => {
@@ -1039,7 +1047,7 @@
       el("opt2Btn").classList.toggle("selected", sel && sel !== "—" && sel === o2);
     }
 
-    // ✅ Host auto-clear ghost P2 in lobby (uses lease + sanity)
+    // Host auto-clear ghost P2 (waiting lobby)
     let autoClearLock = false;
     async function maybeAutoClearP2(room){
       if(autoClearLock) return;
@@ -1071,6 +1079,7 @@
           const now2 = serverNow();
           const lease2 = Number(p2d.leaseUntil || 0);
           const last2 = Number(p2d.lastSeen || 0);
+
           const expired2 = lease2 && now2 >= lease2;
           const crazy2 = lease2 && lease2 > (now2 + MAX_FUTURE);
           const stale2 = last2 && (now2 - last2 > STALE_MS);
@@ -1086,7 +1095,6 @@
     }
 
     function renderFromRoom(room){
-      // lobby
       setText("lobbyRoomId", room.roomId);
       setText("lobbyP1", room.players.p1.name || "Waiting…");
       setText("lobbyP2", room.players.p2.name || "Waiting…");
@@ -1096,7 +1104,6 @@
       const bothJoined = !!(room.players.p1.uid && room.players.p2.uid);
       el("startGame").disabled = !(bothJoined && client.role === "p1");
 
-      // host kick buttons
       const isHost = client.role === "p1";
       const inLobby = room.status === "waiting";
       el("kickP2").style.display = (isHost && inLobby && !!room.players?.p2?.uid) ? "inline-block" : "none";
@@ -1116,7 +1123,6 @@
         setScreen("screenGame");
       }
 
-      // game bits
       setText("gameRoomId", room.roomId);
       setText("gameMeRole", client.role || "—");
       if(room.status !== "playing") return;
@@ -1165,7 +1171,6 @@
         updatePickUI(room);
       }
 
-      // host only controls
       el("next").disabled = !(client.role==="p1");
       el("reset").disabled = !(client.role==="p1");
     }
@@ -1250,7 +1255,6 @@
       setScreen("screenHome");
     }
 
-    // Host kick / force clear
     async function forceClearP2Flow(hard=false){
       if(client.role !== "p1" || !client.roomId) return;
       if(!confirm(hard ? "Force Clear P2? (hard)" : "Kick P2?")) return;
@@ -1516,7 +1520,7 @@
       loadQuestions();
       setScreen("screenHome");
 
-      // disabled until server offset ready (prevents bad lease)
+      // disable until server offset ready
       el("btnCreateRoom").disabled = true;
       el("btnJoinRoom").disabled = true;
 
@@ -1529,7 +1533,7 @@
       }
     }
 
-    // ✅ auth stable + room create will work
+    // ✅ auth stable
     setPersistence(auth, browserLocalPersistence)
       .then(()=> signInAnonymously(auth))
       .catch((e)=>{
