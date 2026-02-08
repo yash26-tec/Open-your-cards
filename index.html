@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>2P Party Game (Firebase Rooms) — FINAL SINGLE FILE (Room Full Fixed)</title>
+  <title>2P Party Game (Firebase Rooms) — FULL & FINAL (Room Full Fixed ✅)</title>
   <style>
     :root{
       --bg:#f5f9ff; --card:#ffffff; --stroke:#dbe7ff;
@@ -358,7 +358,7 @@
 
         <div class="grid">
           <div class="hint"><b>Join Room</b></div>
-          <input id="roomIdJoin" placeholder="Room code (e.g. AB12CD)" />
+          <input id="roomIdJoin" placeholder="Room code (e.g. AB12CD) or paste full link" />
           <input id="myNameJoin" placeholder="Your name" />
           <button class="btn" id="btnJoinRoom">Join Room</button>
         </div>
@@ -586,10 +586,9 @@
   </div>
 
   <script type="module">
-    // Firebase (CDN ESM)
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
     import {
-      getDatabase, ref, onValue, off, get, runTransaction, serverTimestamp
+      getDatabase, ref, onValue, off, get, runTransaction, serverTimestamp, onDisconnect
     } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
     import {
       getAuth, signInAnonymously, onAuthStateChanged,
@@ -619,13 +618,11 @@
     const show = (id) => el(id).classList.add("show");
     const hide = (id) => el(id).classList.remove("show");
     const setText = (id, v) => el(id).textContent = v;
-
     const clampName = (s, fallback) => (String(s||"").trim() || fallback).slice(0, 24);
 
     function cleanRoomId(s){
       return (String(s||"").toUpperCase().trim().replace(/[^A-Z0-9]/g, "")).slice(0, 10);
     }
-
     function extractRoomIdFromInput(raw){
       const s = String(raw || "").trim();
       if(!s) return "";
@@ -645,9 +642,7 @@
       for(let i=0;i<6;i++) out += chars[Math.floor(Math.random()*chars.length)];
       return out;
     }
-
     function deepClone(x){ return JSON.parse(JSON.stringify(x)); }
-
     function shuffle(arr){
       for(let i=arr.length-1;i>0;i--){
         const j = Math.floor(Math.random()*(i+1));
@@ -710,18 +705,19 @@
     // Room doc model
     // ---------------------------
     function makeNewRoomDoc({roomId, hostUid, hostName, q, hostSession}){
+      const now = Date.now();
       return {
         roomId,
         status: "waiting", // waiting | playing
         hostUid,
         players: {
-          p1: { uid: hostUid, name: hostName, session: hostSession },
-          p2: { uid: "", name: "", session: "" }
+          p1: { uid: hostUid, name: hostName, session: hostSession, lastSeen: now },
+          p2: { uid: "", name: "", session: "", lastSeen: 0 }
         },
         mode: "nhie",
         idx: 0,
         order: buildOrder((q?.nhie||[]).length),
-        questions: q || {nhie:[], pick:[]}, // stored in room
+        questions: q || {nhie:[], pick:[]},
         state: {
           counts: {p1:0,p2:0},
           last: {p1:"—",p2:"—"},
@@ -748,7 +744,7 @@
           const r = roomRef(roomId);
 
           const res = await runTransaction(r, (current) => {
-            if(current !== null) return; // abort: exists
+            if(current !== null) return;
             return makeNewRoomDoc({roomId, hostUid, hostName, q, hostSession: session});
           }, { applyLocally: false });
 
@@ -759,51 +755,61 @@
         throw new Error("Could not create room. Try again.");
       }
 
-      // ✅ JOIN: reclaim p2 slot by SAME session token (even if UID changes)
+      // ✅ JOIN: onDisconnect + stale reclaim + session reclaim (final)
       async function joinRoom({roomId, uid, name, session}){
         const rid = extractRoomIdFromInput(roomId);
         if(!rid) throw new Error("Please enter Room code (example: AB12CD) OR paste full link.");
 
         const r = roomRef(rid);
-
         const pre = await get(r);
         if(!pre.exists()) throw new Error("Room not found");
 
-        const res = await runTransaction(r, (doc) => {
-          if(!doc) return; // room not found
+        const STALE_MS = 60 * 1000; // 60 sec
 
-          // ensure schema
-          doc.players = doc.players || { p1:{uid:"",name:"",session:""}, p2:{uid:"",name:"",session:""} };
+        const res = await runTransaction(r, (doc) => {
+          if(!doc) return;
+
+          doc.players = doc.players || { p1:{uid:"",name:"",session:"",lastSeen:0}, p2:{uid:"",name:"",session:"",lastSeen:0} };
           doc.players.p1.session = doc.players.p1.session || "";
           doc.players.p2.session = doc.players.p2.session || "";
+          doc.players.p1.lastSeen = Number(doc.players.p1.lastSeen || 0);
+          doc.players.p2.lastSeen = Number(doc.players.p2.lastSeen || 0);
 
-          // rejoin allowed by uid
+          const now = Date.now();
+
+          // rejoin by uid
           if(doc.players?.p1?.uid === uid){
             doc.players.p1.name = name || doc.players.p1.name;
             doc.players.p1.session = doc.players.p1.session || session;
+            doc.players.p1.lastSeen = now;
             doc.updatedAt = serverTimestamp();
             return doc;
           }
           if(doc.players?.p2?.uid === uid){
             doc.players.p2.name = name || doc.players.p2.name;
             doc.players.p2.session = doc.players.p2.session || session;
+            doc.players.p2.lastSeen = now;
             doc.updatedAt = serverTimestamp();
             return doc;
           }
 
           const p2uid = doc.players?.p2?.uid || "";
           const p2session = doc.players?.p2?.session || "";
+          const p2last = Number(doc.players?.p2?.lastSeen || 0);
 
-          // ✅ reclaim if same device/browser (session match) while waiting
+          // same device reclaim while waiting
           const sameSessionReclaim = !!p2uid && !!p2session && (p2session === session) && doc.status === "waiting";
+          // stale reclaim while waiting
+          const staleReclaim = !!p2uid && doc.status === "waiting" && (now - p2last > STALE_MS);
 
-          // full (real) => abort
-          if(p2uid && !sameSessionReclaim) return;
+          if(p2uid && !sameSessionReclaim && !staleReclaim) return; // abort (full)
 
           // join/reclaim as p2
           doc.players.p2.uid = uid;
           doc.players.p2.name = name;
           doc.players.p2.session = session;
+          doc.players.p2.lastSeen = now;
+
           doc.updatedAt = serverTimestamp();
           return doc;
         }, { applyLocally: false });
@@ -854,7 +860,7 @@
             return null; // host leaves -> delete room
           }
           if(p2 === uid){
-            doc.players.p2 = {uid:"", name:"", session:""};
+            doc.players.p2 = {uid:"", name:"", session:"", lastSeen:0};
             doc.status = "waiting";
             doc.idx = 0;
 
@@ -888,6 +894,39 @@
       session: sessionToken
     };
 
+    // ✅ Presence (auto clear slot on disconnect + heartbeat)
+    let presenceTimer = null;
+    function stopPresence(){
+      if(presenceTimer) clearInterval(presenceTimer);
+      presenceTimer = null;
+    }
+    function setupPresence(roomId, role){
+      stopPresence();
+      const rid = extractRoomIdFromInput(roomId);
+      if(!rid || !role) return;
+
+      const roomPath = ref(db, `rooms/${rid}`);
+      const playerPath = ref(db, `rooms/${rid}/players/${role}`);
+
+      if(role === "p1"){
+        onDisconnect(roomPath).remove(); // host disconnect -> room auto delete
+      }else{
+        onDisconnect(playerPath).set({ uid:"", name:"", session:"", lastSeen:0 }); // p2 disconnect -> slot free
+      }
+
+      // heartbeat
+      presenceTimer = setInterval(async () => {
+        try{
+          await RoomAPI.patchRoom(rid, (doc) => {
+            if(!doc?.players?.[role]) return doc;
+            doc.players[role].lastSeen = Date.now();
+            doc.players[role].session = doc.players[role].session || client.session;
+            return doc;
+          });
+        }catch{}
+      }, 20000);
+    }
+
     function setScreen(name){
       ["screenHome","screenLobby","screenGame"].forEach(id => hide(id));
       show(name);
@@ -914,6 +953,7 @@
     }
 
     function cleanupRoom(){
+      stopPresence();
       if(client.unsub) client.unsub();
       client.unsub = null;
       client.room = null;
@@ -923,6 +963,8 @@
 
     function subscribeRoom(roomId){
       if(client.unsub) client.unsub();
+      setupPresence(roomId, client.role);
+
       client.unsub = RoomAPI.subscribeRoom(roomId, (doc) => {
         client.room = doc;
         if(!doc){
@@ -936,12 +978,9 @@
     }
 
     // ---------------------------
-    // Render (room.questions is source of truth)
+    // Render
     // ---------------------------
-    function getQ(room){
-      return room.questions || {nhie:[], pick:[]};
-    }
-
+    function getQ(room){ return room.questions || {nhie:[], pick:[]}; }
     function getCurrentItem(room){
       const q = getQ(room);
       const list = room.mode === "nhie" ? (q.nhie||[]) : (q.pick||[]);
@@ -949,14 +988,12 @@
       const realIdx = room.order?.[room.idx] ?? 0;
       return list[realIdx] ?? null;
     }
-
     function setProgress(room){
       const q = getQ(room);
       const total = room.mode === "nhie" ? (q.nhie||[]).length : (q.pick||[]).length;
       const pct = total ? Math.round(((room.idx+1)/total)*100) : 0;
       el("progFill").style.width = pct + "%";
     }
-
     function setModeUI(room){
       el("tabNhie").classList.toggle("active", room.mode === "nhie");
       el("tabPick").classList.toggle("active", room.mode === "pick");
@@ -1036,7 +1073,6 @@
     }
 
     function renderFromRoom(room){
-      // Lobby
       setText("lobbyRoomId", room.roomId);
       setText("lobbyP1", room.players.p1.name || "Waiting…");
       setText("lobbyP2", room.players.p2.name || "Waiting…");
@@ -1056,10 +1092,8 @@
         setScreen("screenGame");
       }
 
-      // Game bits
       setText("gameRoomId", room.roomId);
       setText("gameMeRole", client.role || "—");
-
       if(room.status !== "playing") return;
 
       setText("p1Name", room.players.p1.name || "Player 1");
@@ -1072,7 +1106,6 @@
       setText("p1Count", room.state.counts.p1 || 0);
       setText("p2Count", room.state.counts.p2 || 0);
 
-      // Active glow only in NHIE
       const nhieDone = room.state.nhieAnswered.p1 && room.state.nhieAnswered.p2;
       el("scoreP1").classList.toggle("active", room.mode==="nhie" && room.state.nhieTurn==="p1" && !nhieDone);
       el("scoreP2").classList.toggle("active", room.mode==="nhie" && room.state.nhieTurn==="p2" && !nhieDone);
@@ -1107,7 +1140,6 @@
         updatePickUI(room);
       }
 
-      // Host only
       el("next").disabled = !(client.role==="p1");
       el("reset").disabled = !(client.role==="p1");
     }
@@ -1144,7 +1176,7 @@
       const raw = roomIdFromUrl || el("roomIdJoin").value || "";
       const myName = clampName(el("myNameJoin").value, "Player 2");
       const rid = extractRoomIdFromInput(raw);
-      if(!rid) return showHomeError("Please enter Room code (example: AB12CD).");
+      if(!rid) return showHomeError("Please enter Room code or paste full link.");
 
       try{
         const { role, roomId: realRid } = await RoomAPI.joinRoom({
@@ -1414,7 +1446,6 @@
     el("openAdmin").addEventListener("click", openSheet);
     el("closeSheet").addEventListener("click", closeSheet);
 
-    // ✅ only unlock readonly when user actually clicks inside
     el("adminPass").addEventListener("pointerdown", ()=> el("adminPass").removeAttribute("readonly"));
     el("adminPass").addEventListener("focus", ()=> el("adminPass").removeAttribute("readonly"));
 
@@ -1471,6 +1502,7 @@
       if(!confirm("Reset EVERYTHING?")) return;
       localStorage.removeItem(QKEY);
       localStorage.removeItem("admin_unlocked_firebase");
+      localStorage.removeItem(SESSION_KEY);
       location.reload();
     });
 
@@ -1488,7 +1520,7 @@
     });
 
     // ---------------------------
-    // Boot (Auth + URL join hint)
+    // Boot
     // ---------------------------
     function bootUI(){
       loadQuestions();
@@ -1503,7 +1535,7 @@
       }
     }
 
-    // ✅ Anonymous auth (stable uid across refresh)
+    // ✅ Auth stable
     setPersistence(auth, browserLocalPersistence).then(()=>{
       return signInAnonymously(auth);
     }).catch((e)=>{
@@ -1520,4 +1552,3 @@
   </script>
 </body>
 </html>
-
