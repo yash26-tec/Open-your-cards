@@ -1,188 +1,852 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>2P Game — Final Fixed ✅</title>
-  <style>
-    :root{ --bg:#f5f9ff; --card:#ffffff; --stroke:#dbe7ff; --blue:#1d4ed8; --blue2:#2563eb; --txt:#0f172a; --muted:#64748b; --shadow: 0 10px 26px rgba(15,23,42,.08); --r:18px; }
-    *{box-sizing:border-box;font-family:system-ui,-apple-system,sans-serif}
-    body{ margin:0; min-height:100dvh; background:radial-gradient(1100px 520px at 50% -25%, rgba(37,99,235,.22), transparent 55%), linear-gradient(180deg,var(--bg),#fff); color:var(--txt); display:flex; justify-content:center; padding:14px; }
-    .app{width:min(520px,100%);display:grid;gap:12px;padding-bottom:96px}
-    .card{ background:rgba(255,255,255,.92); border:1px solid var(--stroke); border-radius:var(--r); box-shadow:var(--shadow); padding:20px; backdrop-filter: blur(10px); }
-    .btn{ border:1px solid var(--stroke); background:linear-gradient(180deg,#ffffff,#f8fbff); color:var(--txt); border-radius:16px; padding:14px; font-weight:bold; cursor:pointer; width:100%; transition:transform .1s; margin-top:10px; }
-    .btn.primary{ background:linear-gradient(135deg,var(--blue),var(--blue2)); color:#fff; border:0; }
-    .btn:active{ transform: scale(0.98); }
-    input{ width:100%; border:1px solid var(--stroke); border-radius:12px; padding:12px; margin-bottom:10px; outline:none; font-size:16px; }
-    .screen{display:none} .screen.show{display:block}
-    .mono{font-family:monospace; background:#f1f5f9; padding:4px 8px; border-radius:6px; font-weight:bold; color:var(--blue)}
-    .scoreGrid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:15px 0;}
-    .scoreCard{border:1px solid var(--stroke); border-radius:12px; padding:10px; text-align:center; background:#fff;}
-    #statusPill{ font-size:12px; color:var(--muted); text-align:center; margin-bottom:10px; }
-  </style>
-</head>
-<body>
+<script type="module">
+  import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-  <div class="app">
-    <div class="card">
-      <div id="statusPill">Connecting to Server...</div>
-      
-      <div id="screenHome" class="screen show">
-        <h2>Create Room</h2>
-        <input id="nameHost" placeholder="Your Name" />
-        <button class="btn primary" id="btnCreate">Create New Room</button>
-        
-        <hr style="margin:20px 0; border:0; border-top:1px solid #eee">
-        
-        <h2>Join Room</h2>
-        <input id="roomInput" placeholder="Enter Room Code" />
-        <input id="nameGuest" placeholder="Your Name" />
-        <button class="btn" id="btnJoin">Join Game</button>
-      </div>
+  // ✅ Supabase config (publishable key only)
+  const SUPABASE_URL = "https://xgiryhgysebcskkyhmej.supabase.co";
+  const SUPABASE_ANON_KEY = "PASTE_YOUR_sb_publishable_KEY_HERE";
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-      <div id="screenLobby" class="screen">
-        <h3>Room: <span id="displayRoomId" class="mono"></span></h3>
-        <p style="font-size:14px; color:var(--muted)">Share the code with a friend. Once they join, you can start.</p>
-        <div class="scoreGrid">
-          <div class="scoreCard"><b>P1:</b><br><span id="p1Name">...</span></div>
-          <div class="scoreCard"><b>P2:</b><br><span id="p2Name">Waiting...</span></div>
-        </div>
-        <button class="btn primary" id="btnStart" disabled>Start Game</button>
-      </div>
+  // ---------------------------
+  // Utilities
+  // ---------------------------
+  const el = (id) => document.getElementById(id);
+  const show = (id) => el(id).classList.add("show");
+  const hide = (id) => el(id).classList.remove("show");
+  const setText = (id, v) => el(id).textContent = v;
 
-      <div id="screenGame" class="screen">
-        <div style="background:#f8fbff; padding:20px; border-radius:12px; text-align:center; min-height:100px; display:flex; align-items:center; justify-content:center">
-           <h2 id="questionText">Waiting for question...</h2>
-        </div>
-        <div class="scoreGrid">
-          <div class="scoreCard">P1 Score: <b id="p1Score">0</b></div>
-          <div class="scoreCard">P2 Score: <b id="p2Score">0</b></div>
-        </div>
-        <button class="btn primary" id="btnNext" style="display:none">Next Question</button>
-        <button class="btn" onclick="location.reload()">Exit Game</button>
-      </div>
-    </div>
-  </div>
+  const clampName = (s, fallback) => (String(s||"").trim() || fallback).slice(0, 24);
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-    import { getDatabase, ref, onValue, get, set, update, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
-    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+  function cleanRoomId(s){
+    return (String(s||"").toUpperCase().trim().replace(/[^A-Z0-9]/g, "")).slice(0, 10);
+  }
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyDDMj_YT8NRN-RYpksqjGOUTF5RzM5AgOM",
-      authDomain: "power2-91fdc.firebaseapp.com",
-      databaseURL: "https://power2-91fdc-default-rtdb.firebaseio.com",
-      projectId: "power2-91fdc",
-      appId: "1:1096207181248:web:2fa473d9d8781616559425"
+  function genRoomId(){
+    const chars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+    let out = "";
+    for(let i=0;i<6;i++) out += chars[Math.floor(Math.random()*chars.length)];
+    return out;
+  }
+
+  function deepClone(x){ return JSON.parse(JSON.stringify(x)); }
+
+  function shuffle(arr){
+    for(let i=arr.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [arr[i],arr[j]] = [arr[j],arr[i]];
+    }
+  }
+  function buildOrder(len){
+    const order = Array.from({length:len}, (_,i)=>i);
+    shuffle(order);
+    return order;
+  }
+
+  // ---------------------------
+  // Questions (Manage) - local
+  // ---------------------------
+  const QKEY = "party_questions_local_v2";
+  const ADMIN_PASSWORD = "Admin@123";
+
+  const SAMPLE_Q = {
+    nhie:[
+      "Never have I ever lied to my parents",
+      "Never have I ever ghosted someone",
+      "Never have I ever skipped a class",
+      "Never have I ever stalked someone’s profile"
+    ],
+    pick:[
+      {q:"Pick one", o1:"Pizza", o2:"Burger"},
+      {q:"Pick one", o1:"Netflix", o2:"YouTube"},
+      {q:"Pick one", o1:"Beach", o2:"Mountains"}
+    ]
+  };
+
+  const questions = { nhie:[], pick:[] };
+
+  function loadQuestions(){
+    try{
+      const v = JSON.parse(localStorage.getItem(QKEY));
+      if(!v) throw 0;
+      questions.nhie = Array.isArray(v.nhie) ? v.nhie : [];
+      questions.pick = Array.isArray(v.pick) ? v.pick : [];
+    }catch{
+      questions.nhie = deepClone(SAMPLE_Q.nhie);
+      questions.pick = deepClone(SAMPLE_Q.pick);
+      saveQuestions();
+    }
+  }
+  function saveQuestions(){
+    localStorage.setItem(QKEY, JSON.stringify(questions));
+  }
+
+  // ---------------------------
+  // Room doc model (same as before)
+  // ---------------------------
+  function makeNewRoomDoc({roomId, hostUid, hostName, q}){
+    return {
+      roomId,
+      status: "waiting",
+      hostUid,
+      players: {
+        p1: { uid: hostUid, name: hostName },
+        p2: { uid: "", name: "" }
+      },
+      mode: "nhie",
+      idx: 0,
+      order: buildOrder((q?.nhie||[]).length),
+      questions: q || {nhie:[], pick:[]},
+      state: {
+        counts: {p1:0,p2:0},
+        last: {p1:"—",p2:"—"},
+        nhieTurn: "p1",
+        nhieAnswered: {p1:false,p2:false},
+
+        pickLast: {p1:"—",p2:"—"},
+        pickTurn: "p1",
+        pickAnswered: {p1:false,p2:false},
+      },
+      updatedAtClient: Date.now()
     };
+  }
 
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
-    const auth = getAuth(app);
+  // ---------------------------
+  // Supabase Room API
+  // ---------------------------
+  const RoomAPI = (() => {
 
-    let client = { uid: null, roomId: null, role: null };
-    const questions = ["Never have I ever lied about my age.", "Never have I ever ghosted someone.", "Never have I ever stolen a snack.", "Never have I ever faked being sick."];
+    async function getRoomDoc(roomId){
+      const rid = cleanRoomId(roomId);
+      const { data, error } = await supabase
+        .from("rooms")
+        .select("doc")
+        .eq("room_id", rid)
+        .maybeSingle();
 
-    const showScreen = (id) => {
-      document.querySelectorAll('.screen').forEach(s => s.classList.remove('show'));
-      document.getElementById(id).classList.add('show');
-    };
-
-    onAuthStateChanged(auth, (user) => {
-      if(user) {
-        client.uid = user.uid;
-        document.getElementById('statusPill').innerText = "Connected ✅";
-      }
-    });
-    signInAnonymously(auth);
-
-    // --- CREATE ROOM ---
-    document.getElementById('btnCreate').onclick = async () => {
-      if(!client.uid) return alert("Wait for connection...");
-      const name = document.getElementById('nameHost').value || "Host";
-      const roomId = Math.random().toString(36).substring(2, 8).toUpperCase();
-      
-      await set(ref(db, `rooms/${roomId}`), {
-        roomId,
-        status: "waiting",
-        qIdx: 0,
-        players: {
-          p1: { uid: client.uid, name: name },
-          p2: { uid: "", name: "" }
-        },
-        scores: { p1: 0, p2: 0 }
-      });
-
-      client.roomId = roomId; client.role = "p1";
-      initLobby(roomId);
-    };
-
-    // --- JOIN ROOM ---
-    document.getElementById('btnJoin').onclick = async () => {
-      if(!client.uid) return alert("Wait for connection...");
-      let raw = document.getElementById('roomInput').value.trim().toUpperCase();
-      let roomId = raw.includes("?ROOM=") ? raw.split("?ROOM=")[1].split("&")[0] : raw;
-      const name = document.getElementById('nameGuest').value || "Guest";
-
-      const snap = await get(ref(db, `rooms/${roomId}`));
-      if(!snap.exists()) return alert("Room not found!");
-
-      const data = snap.val();
-      
-      // If already in room (either as p1 or p2)
-      if(data.players.p1.uid === client.uid) { client.role = "p1"; }
-      else if(data.players.p2.uid === client.uid || data.players.p2.uid === "") {
-        await update(ref(db, `rooms/${roomId}/players/p2`), { uid: client.uid, name: name });
-        client.role = "p2";
-      } else {
-        return alert("Room is actually full!");
-      }
-
-      client.roomId = roomId;
-      initLobby(roomId);
-    };
-
-    function initLobby(roomId) {
-      showScreen('screenLobby');
-      document.getElementById('displayRoomId').innerText = roomId;
-
-      onValue(ref(db, `rooms/${roomId}`), (snap) => {
-        const data = snap.val();
-        if(!data) return;
-
-        document.getElementById('p1Name').innerText = data.players.p1.name;
-        document.getElementById('p2Name').innerText = data.players.p2.uid ? data.players.p2.name : "Waiting...";
-        
-        if(data.players.p2.uid) {
-            document.getElementById('btnStart').disabled = (client.role !== "p1");
-            document.getElementById('btnStart').innerText = (client.role === "p1") ? "Start Game" : "Host will start...";
-        }
-
-        if(data.status === "playing") {
-          showScreen('screenGame');
-          document.getElementById('questionText').innerText = questions[data.qIdx % questions.length];
-          document.getElementById('p1Score').innerText = data.scores.p1;
-          document.getElementById('p2Score').innerText = data.scores.p2;
-          document.getElementById('btnNext').style.display = (client.role === "p1") ? "block" : "none";
-        }
-      });
+      if(error) throw error;
+      return data?.doc ?? null;
     }
 
-    document.getElementById('btnStart').onclick = () => {
-      update(ref(db, `rooms/${client.roomId}`), { status: "playing" });
-    };
+    async function createRoom({hostUid, hostName, q}){
+      for(let t=0; t<8; t++){
+        const roomId = genRoomId();
+        const doc = makeNewRoomDoc({roomId, hostUid, hostName, q});
 
-    document.getElementById('btnNext').onclick = () => {
-      get(ref(db, `rooms/${client.roomId}/qIdx`)).then(s => {
-        update(ref(db, `rooms/${client.roomId}`), { qIdx: (s.val() || 0) + 1 });
+        const { data, error } = await supabase.rpc("create_room", {
+          p_room_id: roomId,
+          p_doc: doc
+        });
+
+        if(!error){
+          return { roomId, role:"p1" };
+        }
+        // if exists retry, else throw
+        if((error.message || "").includes("ROOM_EXISTS")) continue;
+        throw error;
+      }
+      throw new Error("Could not create room. Try again.");
+    }
+
+    async function joinRoom({roomId, uid, name}){
+      const rid = cleanRoomId(roomId);
+
+      const { data, error } = await supabase.rpc("join_room", {
+        p_room_id: rid,
+        p_uid: uid,
+        p_name: name
       });
-    };
 
-    // Auto-fill roomId from URL
-    const urlParams = new URLSearchParams(window.location.search);
-    if(urlParams.get('room')) document.getElementById('roomInput').value = urlParams.get('room');
+      if(error){
+        const m = error.message || "";
+        if(m.includes("ROOM_NOT_FOUND")) throw new Error("Room not found");
+        if(m.includes("ROOM_FULL")) throw new Error("Room is full");
+        throw error;
+      }
 
-  </script>
-</body>
-</html>
+      const doc = data;
+      if(doc?.players?.p1?.uid === uid) return { role:"p1", roomId: rid };
+      if(doc?.players?.p2?.uid === uid) return { role:"p2", roomId: rid };
+      throw new Error("Join failed");
+    }
+
+    function subscribeRoom(roomId, cb){
+      const rid = cleanRoomId(roomId);
+
+      // initial fetch
+      getRoomDoc(rid).then(cb).catch(console.error);
+
+      const channel = supabase
+        .channel("room:"+rid)
+        .on("postgres_changes", {
+          event: "*",
+          schema: "public",
+          table: "rooms",
+          filter: `room_id=eq.${rid}`
+        }, async (payload) => {
+          if(payload.eventType === "DELETE"){
+            cb(null);
+            return;
+          }
+          // payload.new has doc sometimes, but safest fetch again
+          const doc = await getRoomDoc(rid);
+          cb(doc);
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+
+    async function patchRoom(roomId, patchFn){
+      const rid = cleanRoomId(roomId);
+      const current = await getRoomDoc(rid);
+      if(!current) throw new Error("Room not found");
+
+      const next = patchFn(deepClone(current));
+      next.updatedAtClient = Date.now();
+
+      const { data, error } = await supabase.rpc("patch_room", {
+        p_room_id: rid,
+        p_doc: next
+      });
+
+      if(error) throw error;
+      return data;
+    }
+
+    async function leaveRoom(roomId, uid){
+      const rid = cleanRoomId(roomId);
+      const { error } = await supabase.rpc("leave_room", {
+        p_room_id: rid,
+        p_uid: uid
+      });
+      if(error) throw error;
+    }
+
+    return { createRoom, joinRoom, subscribeRoom, patchRoom, leaveRoom };
+  })();
+
+  // ---------------------------
+  // Client state
+  // ---------------------------
+  const client = {
+    uid: "",
+    roomId: "",
+    role: "",
+    room: null,
+    unsub: null,
+  };
+
+  function setScreen(name){
+    ["screenHome","screenLobby","screenGame"].forEach(id => hide(id));
+    show(name);
+
+    const isGame = name === "screenGame";
+    el("reset").disabled = !isGame;
+    el("next").disabled  = !isGame;
+    el("modeSeg").style.display = isGame ? "flex" : "none";
+  }
+
+  function showHomeError(msg){
+    el("homeErr").style.display = msg ? "block" : "none";
+    el("homeErr").textContent = msg || "";
+  }
+  function showLobbyError(msg){
+    el("lobbyErr").style.display = msg ? "block" : "none";
+    el("lobbyErr").textContent = msg || "";
+  }
+
+  function buildShareLink(roomId){
+    const u = new URL(window.location.href);
+    u.searchParams.set("room", cleanRoomId(roomId));
+    return u.toString();
+  }
+
+  function cleanupRoom(){
+    if(client.unsub) client.unsub();
+    client.unsub = null;
+    client.room = null;
+    client.roomId = "";
+    client.role = "";
+  }
+
+  function subscribeRoom(roomId){
+    if(client.unsub) client.unsub();
+    client.unsub = RoomAPI.subscribeRoom(roomId, (doc) => {
+      client.room = doc;
+      if(!doc){
+        cleanupRoom();
+        setScreen("screenHome");
+        showHomeError("Room ended or deleted.");
+        return;
+      }
+      renderFromRoom(doc);
+    });
+  }
+
+  // ---------------------------
+  // Render (same logic as your old code)
+  // ---------------------------
+  function getQ(room){ return room.questions || {nhie:[], pick:[]}; }
+
+  function getCurrentItem(room){
+    const q = getQ(room);
+    const list = room.mode === "nhie" ? (q.nhie||[]) : (q.pick||[]);
+    if(!list.length) return null;
+    const realIdx = room.order?.[room.idx] ?? 0;
+    return list[realIdx] ?? null;
+  }
+
+  function setProgress(room){
+    const q = getQ(room);
+    const total = room.mode === "nhie" ? (q.nhie||[]).length : (q.pick||[]).length;
+    const pct = total ? Math.round(((room.idx+1)/total)*100) : 0;
+    el("progFill").style.width = pct + "%";
+  }
+
+  function setModeUI(room){
+    el("tabNhie").classList.toggle("active", room.mode === "nhie");
+    el("tabPick").classList.toggle("active", room.mode === "pick");
+    el("nhieArea").style.display = room.mode === "nhie" ? "block" : "none";
+    el("pickArea").style.display = room.mode === "pick" ? "block" : "none";
+  }
+
+  function updateNhieUI(room){
+    const a1 = room.state.last.p1 || "—";
+    const a2 = room.state.last.p2 || "—";
+    el("p1SelMini").textContent = (room.players.p1.name || "Player 1") + " • Selection";
+    el("p2SelMini").textContent = (room.players.p2.name || "Player 2") + " • Selection";
+    setText("p1SelBox", a1); setText("p2SelBox", a2);
+    el("p1SelBox").classList.toggle("selected", a1 !== "—");
+    el("p2SelBox").classList.toggle("selected", a2 !== "—");
+
+    const d1 = !!room.state.nhieAnswered.p1;
+    const d2 = !!room.state.nhieAnswered.p2;
+    setText("p1Badge", d1 ? "Done" : "Pending");
+    setText("p2Badge", d2 ? "Done" : "Pending");
+    el("p1Badge").classList.toggle("done", d1);
+    el("p2Badge").classList.toggle("done", d2);
+
+    const turn = room.state.nhieTurn;
+    setText("nhieTurnPill", "Turn: " + (turn==="p1" ? (room.players.p1.name||"P1") : (room.players.p2.name||"P2")));
+
+    const both = d1 && d2;
+    if(both){
+      setText("nhieStatus", "Both answered ✅ Host can tap Next.");
+      el("nhieHave").disabled = true;
+      el("nhieNever").disabled = true;
+    }else{
+      const tName = turn==="p1" ? (room.players.p1.name||"P1") : (room.players.p2.name||"P2");
+      setText("nhieStatus", tName + " select: I Have / I Never");
+      const myTurn = client.role === turn;
+      el("nhieHave").disabled = !myTurn;
+      el("nhieNever").disabled = !myTurn;
+    }
+
+    const sel = room.state.last[turn];
+    el("nhieHave").classList.toggle("selected", sel === "I Have");
+    el("nhieNever").classList.toggle("selected", sel === "I Never");
+  }
+
+  function updatePickUI(room){
+    const t = room.state.pickTurn;
+    setText("pickTurnPill", "Turn: " + (t==="p1" ? (room.players.p1.name||"P1") : (room.players.p2.name||"P2")));
+
+    const v1 = room.state.pickLast.p1 || "—";
+    const v2 = room.state.pickLast.p2 || "—";
+    setText("p1PickBox", v1);
+    setText("p2PickBox", v2);
+    el("p1PickBox").classList.toggle("selected", v1 !== "—");
+    el("p2PickBox").classList.toggle("selected", v2 !== "—");
+
+    const a1 = !!room.state.pickAnswered.p1;
+    const a2 = !!room.state.pickAnswered.p2;
+    const both = a1 && a2;
+
+    if(both){
+      setText("pickStatus", "Both answered ✅ Host can tap Next.");
+      el("opt1Btn").disabled = true;
+      el("opt2Btn").disabled = true;
+    }else{
+      const tName = t==="p1" ? (room.players.p1.name||"P1") : (room.players.p2.name||"P2");
+      setText("pickStatus", tName + " select an option.");
+      const myTurn = client.role === t;
+      el("opt1Btn").disabled = !myTurn;
+      el("opt2Btn").disabled = !myTurn;
+    }
+
+    const sel = room.state.pickLast[t];
+    const o1 = el("opt1Btn").textContent || "Option 1";
+    const o2 = el("opt2Btn").textContent || "Option 2";
+    el("opt1Btn").classList.toggle("selected", sel && sel !== "—" && sel === o1);
+    el("opt2Btn").classList.toggle("selected", sel && sel !== "—" && sel === o2);
+  }
+
+  function renderFromRoom(room){
+    setText("lobbyRoomId", room.roomId);
+    setText("lobbyP1", room.players.p1.name || "Waiting…");
+    setText("lobbyP2", room.players.p2.name || "Waiting…");
+    setText("lobbyRolePill", "Role: " + (client.role || "—"));
+    el("shareLink").value = buildShareLink(room.roomId);
+
+    const bothJoined = !!(room.players.p1.uid && room.players.p2.uid);
+    el("startGame").disabled = !(bothJoined && client.role === "p1");
+
+    if(room.status === "waiting"){
+      setScreen("screenLobby");
+      el("lobbyHint").textContent = bothJoined
+        ? "Both players joined ✅ Host can start the game."
+        : "Waiting for Player 2 to join…";
+    }
+    if(room.status === "playing"){
+      setScreen("screenGame");
+    }
+
+    setText("gameRoomId", room.roomId);
+    setText("gameMeRole", client.role || "—");
+
+    if(room.status !== "playing") return;
+
+    setText("p1Name", room.players.p1.name || "Player 1");
+    setText("p2Name", room.players.p2.name || "Player 2");
+    setText("p1Name2", room.players.p1.name || "Player 1");
+    setText("p2Name2", room.players.p2.name || "Player 2");
+
+    setModeUI(room);
+
+    setText("p1Count", room.state.counts.p1 || 0);
+    setText("p2Count", room.state.counts.p2 || 0);
+
+    const item = getCurrentItem(room);
+    const q = getQ(room);
+
+    if(!item){
+      setText("qText", "No questions yet.");
+      setText("qMeta", "Open Manage → add questions");
+      el("opt1Btn").textContent = "Option 1";
+      el("opt2Btn").textContent = "Option 2";
+      setProgress(room);
+      updateNhieUI(room);
+      updatePickUI(room);
+      return;
+    }
+
+    if(room.mode === "nhie"){
+      setText("qText", item);
+      setText("qMeta", `Never Have I Ever • ${room.idx+1}/${(q.nhie||[]).length}`);
+      setProgress(room);
+      updateNhieUI(room);
+    }else{
+      const qq = item.q?.trim() ? item.q.trim() : "Pick one";
+      setText("qText", qq);
+      setText("qMeta", `Pick One • ${room.idx+1}/${(q.pick||[]).length}`);
+      el("opt1Btn").textContent = item.o1 || "Option 1";
+      el("opt2Btn").textContent = item.o2 || "Option 2";
+      setProgress(room);
+      updatePickUI(room);
+    }
+
+    el("next").disabled = !(client.role==="p1");
+    el("reset").disabled = !(client.role==="p1");
+  }
+
+  // ---------------------------
+  // Room flows (same as before, but using Supabase API)
+  // ---------------------------
+  async function createRoomFlow(){
+    showHomeError("");
+    const myName = clampName(el("myNameCreate").value, "Player 1");
+
+    try{
+      const q = deepClone(questions);
+      const { roomId, role } = await RoomAPI.createRoom({
+        hostUid: client.uid,
+        hostName: myName,
+        q
+      });
+
+      client.role = role;
+      client.roomId = roomId;
+
+      setText("topSub", "Room created. Share link and wait for friend.");
+      subscribeRoom(roomId);
+    }catch(err){
+      console.error(err);
+      showHomeError(err?.message || "Failed to create room");
+    }
+  }
+
+  async function joinRoomFlow(roomIdFromUrl){
+    showHomeError("");
+    const roomId = cleanRoomId(roomIdFromUrl || el("roomIdJoin").value || "");
+    const myName = clampName(el("myNameJoin").value, "Player 2");
+    if(!roomId) return showHomeError("Please enter Room code (example: AB12CD).");
+
+    try{
+      const { role, roomId: rid } = await RoomAPI.joinRoom({ roomId, uid: client.uid, name: myName });
+      client.role = role;
+      client.roomId = rid;
+
+      setText("topSub", "Joined room. Waiting for host to start.");
+      subscribeRoom(rid);
+    }catch(err){
+      console.error(err);
+      showHomeError(err?.message || "Failed to join room");
+    }
+  }
+
+  async function startGameFlow(){
+    showLobbyError("");
+    if(client.role !== "p1") return;
+    if(!client.roomId) return;
+
+    try{
+      const q = deepClone(questions);
+      await RoomAPI.patchRoom(client.roomId, (doc) => {
+        const both = doc.players.p1.uid && doc.players.p2.uid;
+        if(!both) return doc;
+
+        doc.questions = q;
+        doc.status = "playing";
+        doc.mode = doc.mode || "nhie";
+
+        const len = doc.mode === "nhie" ? (q.nhie||[]).length : (q.pick||[]).length;
+        doc.order = buildOrder(len);
+        doc.idx = 0;
+
+        doc.state.last = {p1:"—",p2:"—"};
+        doc.state.nhieAnswered = {p1:false,p2:false};
+        doc.state.nhieTurn = "p1";
+
+        doc.state.pickLast = {p1:"—",p2:"—"};
+        doc.state.pickAnswered = {p1:false,p2:false};
+        doc.state.pickTurn = "p1";
+
+        return doc;
+      });
+    }catch(err){
+      console.error(err);
+      showLobbyError(err?.message || "Cannot start");
+    }
+  }
+
+  async function leaveRoomFlow(){
+    try{
+      if(client.roomId){
+        await RoomAPI.leaveRoom(client.roomId, client.uid);
+      }
+    }catch(e){ console.error(e); }
+
+    cleanupRoom();
+    setScreen("screenHome");
+  }
+
+  async function setMode(mode){
+    if(client.role !== "p1") return;
+    if(!client.roomId) return;
+
+    await RoomAPI.patchRoom(client.roomId, (doc) => {
+      doc.mode = mode;
+
+      const q = doc.questions || {nhie:[], pick:[]};
+      const len = mode === "nhie" ? (q.nhie||[]).length : (q.pick||[]).length;
+      doc.order = buildOrder(len);
+      doc.idx = 0;
+
+      doc.state.last = {p1:"—",p2:"—"};
+      doc.state.nhieAnswered = {p1:false,p2:false};
+      doc.state.nhieTurn = "p1";
+
+      doc.state.pickLast = {p1:"—",p2:"—"};
+      doc.state.pickAnswered = {p1:false,p2:false};
+      doc.state.pickTurn = "p1";
+
+      return doc;
+    });
+  }
+
+  async function nhieSelect(answerText){
+    if(!client.roomId) return;
+
+    await RoomAPI.patchRoom(client.roomId, (doc) => {
+      if(doc.status !== "playing") return doc;
+      if(doc.mode !== "nhie") return doc;
+
+      const turn = doc.state.nhieTurn;
+      if(client.role !== turn) return doc;
+      if(doc.state.nhieAnswered[turn]) return doc;
+
+      doc.state.last[turn] = answerText;
+      doc.state.nhieAnswered[turn] = true;
+
+      if(answerText === "I Have"){
+        doc.state.counts[turn] = (doc.state.counts[turn] || 0) + 1;
+      }
+
+      const other = (turn === "p1") ? "p2" : "p1";
+      if(!doc.state.nhieAnswered[other]){
+        doc.state.nhieTurn = other;
+      }
+      return doc;
+    });
+  }
+
+  async function pickSelect(optionText){
+    if(!client.roomId) return;
+
+    await RoomAPI.patchRoom(client.roomId, (doc) => {
+      if(doc.status !== "playing") return doc;
+      if(doc.mode !== "pick") return doc;
+
+      const turn = doc.state.pickTurn;
+      if(client.role !== turn) return doc;
+      if(doc.state.pickAnswered[turn]) return doc;
+
+      doc.state.pickLast[turn] = optionText;
+      doc.state.pickAnswered[turn] = true;
+
+      const other = (turn === "p1") ? "p2" : "p1";
+      if(!doc.state.pickAnswered[other]){
+        doc.state.pickTurn = other;
+      }
+      return doc;
+    });
+  }
+
+  async function nextQuestion(){
+    if(client.role !== "p1") return;
+    if(!client.roomId) return;
+
+    await RoomAPI.patchRoom(client.roomId, (doc) => {
+      if(doc.status !== "playing") return doc;
+
+      const q = doc.questions || {nhie:[], pick:[]};
+      const len = doc.mode === "nhie" ? (q.nhie||[]).length : (q.pick||[]).length;
+      if(!len) return doc;
+
+      if(doc.mode === "nhie"){
+        if(!(doc.state.nhieAnswered.p1 && doc.state.nhieAnswered.p2)) return doc;
+      }else{
+        if(!(doc.state.pickAnswered.p1 && doc.state.pickAnswered.p2)) return doc;
+      }
+
+      doc.idx = (doc.idx + 1) % len;
+
+      doc.state.last = {p1:"—",p2:"—"};
+      doc.state.nhieAnswered = {p1:false,p2:false};
+      doc.state.nhieTurn = "p1";
+
+      doc.state.pickLast = {p1:"—",p2:"—"};
+      doc.state.pickAnswered = {p1:false,p2:false};
+      doc.state.pickTurn = "p1";
+
+      return doc;
+    });
+  }
+
+  async function resetGame(){
+    if(client.role !== "p1") return;
+    if(!client.roomId) return;
+
+    await RoomAPI.patchRoom(client.roomId, (doc) => {
+      const q = doc.questions || {nhie:[], pick:[]};
+      const len = doc.mode === "nhie" ? (q.nhie||[]).length : (q.pick||[]).length;
+
+      doc.state.counts = {p1:0,p2:0};
+      doc.idx = 0;
+      doc.order = buildOrder(len);
+
+      doc.state.last = {p1:"—",p2:"—"};
+      doc.state.nhieAnswered = {p1:false,p2:false};
+      doc.state.nhieTurn = "p1";
+
+      doc.state.pickLast = {p1:"—",p2:"—"};
+      doc.state.pickAnswered = {p1:false,p2:false};
+      doc.state.pickTurn = "p1";
+
+      return doc;
+    });
+  }
+
+  // ---------------------------
+  // Manage sheet (same as your old code) - unchanged
+  // ---------------------------
+  function escapeHtml(s){
+    return String(s).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;").replaceAll("'","&#039;");
+  }
+
+  function renderLists(){
+    el("nhieList").innerHTML = questions.nhie.length
+      ? questions.nhie.map((q,i)=>`
+        <div class="listItem">
+          <div>${escapeHtml(q)}</div>
+          <button class="del" data-del-nhie="${i}">Delete</button>
+        </div>
+      `).join("")
+      : `<div class="tiny">No NHIE questions.</div>`;
+
+    el("pickList").innerHTML = questions.pick.length
+      ? questions.pick.map((p,i)=>`
+        <div class="listItem">
+          <div><b>${escapeHtml(p.o1||"Option 1")}</b> vs <b>${escapeHtml(p.o2||"Option 2")}</b></div>
+          <button class="del" data-del-pick="${i}">Delete</button>
+        </div>
+      `).join("")
+      : `<div class="tiny">No Pick One questions.</div>`;
+  }
+
+  function openSheet(){
+    el("overlay").classList.add("show");
+    const unlocked = localStorage.getItem("admin_unlocked_firebase")==="1";
+    el("adminLogin").style.display = unlocked ? "none" : "block";
+    el("adminPanel").style.display = unlocked ? "block" : "none";
+    if(unlocked) renderLists();
+    el("adminPass").value = "";
+    el("adminPass").setAttribute("readonly","readonly");
+    setTimeout(()=>el("adminPass").blur(), 0);
+  }
+  function closeSheet(){ el("overlay").classList.remove("show"); }
+
+  // ---------------------------
+  // Wire events (same as your old code)
+  // ---------------------------
+  el("btnCreateRoom").addEventListener("click", createRoomFlow);
+  el("btnJoinRoom").addEventListener("click", () => joinRoomFlow(""));
+
+  el("startGame").addEventListener("click", startGameFlow);
+  el("leaveRoom").addEventListener("click", leaveRoomFlow);
+
+  el("copyLink").addEventListener("click", async () => {
+    try{
+      await navigator.clipboard.writeText(el("shareLink").value);
+      el("copyLink").textContent = "Copied ✅";
+      setTimeout(()=> el("copyLink").textContent = "Copy Link", 900);
+    }catch{
+      el("shareLink").select();
+      document.execCommand("copy");
+    }
+  });
+
+  el("tabNhie").addEventListener("click", ()=> setMode("nhie"));
+  el("tabPick").addEventListener("click", ()=> setMode("pick"));
+
+  el("nhieHave").addEventListener("click", ()=> nhieSelect("I Have"));
+  el("nhieNever").addEventListener("click", ()=> nhieSelect("I Never"));
+
+  el("opt1Btn").addEventListener("click", ()=> pickSelect(el("opt1Btn").textContent || "Option 1"));
+  el("opt2Btn").addEventListener("click", ()=> pickSelect(el("opt2Btn").textContent || "Option 2"));
+
+  el("next").addEventListener("click", nextQuestion);
+  el("reset").addEventListener("click", resetGame);
+
+  el("openAdmin").addEventListener("click", openSheet);
+  el("closeSheet").addEventListener("click", closeSheet);
+
+  el("adminPass").addEventListener("pointerdown", ()=> el("adminPass").removeAttribute("readonly"));
+  el("adminPass").addEventListener("focus", ()=> el("adminPass").removeAttribute("readonly"));
+
+  el("unlock").addEventListener("click", ()=>{
+    const pass = (el("adminPass").value || "").trim();
+    if(pass === ADMIN_PASSWORD){
+      localStorage.setItem("admin_unlocked_firebase","1");
+      el("adminLogin").style.display = "none";
+      el("adminPanel").style.display = "block";
+      renderLists();
+    }else{
+      alert("Wrong password");
+    }
+  });
+
+  el("addNhie").addEventListener("click", ()=>{
+    const v = (el("nhieNew").value || "").trim();
+    if(!v) return;
+    questions.nhie.unshift(v);
+    el("nhieNew").value="";
+    saveQuestions(); renderLists();
+  });
+
+  el("clearNhie").addEventListener("click", ()=>{
+    if(!confirm("Clear all NHIE questions?")) return;
+    questions.nhie = [];
+    saveQuestions(); renderLists();
+  });
+
+  el("addPick").addEventListener("click", ()=>{
+    const q = (el("pickQ").value || "").trim() || "Pick one";
+    const o1 = (el("pickO1").value || "").trim();
+    const o2 = (el("pickO2").value || "").trim();
+    if(!o1 || !o2) return alert("Fill both options.");
+    questions.pick.unshift({q,o1,o2});
+    el("pickQ").value=""; el("pickO1").value=""; el("pickO2").value="";
+    saveQuestions(); renderLists();
+  });
+
+  el("clearPick").addEventListener("click", ()=>{
+    if(!confirm("Clear all Pick One questions?")) return;
+    questions.pick = [];
+    saveQuestions(); renderLists();
+  });
+
+  el("loadSample").addEventListener("click", ()=>{
+    questions.nhie = deepClone(SAMPLE_Q.nhie);
+    questions.pick = deepClone(SAMPLE_Q.pick);
+    saveQuestions(); renderLists();
+    alert("Sample loaded ✅");
+  });
+
+  el("wipeAll").addEventListener("click", ()=>{
+    if(!confirm("Reset EVERYTHING?")) return;
+    localStorage.removeItem(QKEY);
+    localStorage.removeItem("admin_unlocked_firebase");
+    location.reload();
+  });
+
+  el("overlay").addEventListener("click", (e)=>{
+    const dn = e.target?.getAttribute?.("data-del-nhie");
+    const dp = e.target?.getAttribute?.("data-del-pick");
+    if(dn != null){
+      questions.nhie.splice(Number(dn),1);
+      saveQuestions(); renderLists();
+    }
+    if(dp != null){
+      questions.pick.splice(Number(dp),1);
+      saveQuestions(); renderLists();
+    }
+  });
+
+  // ---------------------------
+  // Boot (Supabase anonymous auth)
+  // ---------------------------
+  async function bootUI(){
+    loadQuestions();
+    setScreen("screenHome");
+
+    const url = new URL(window.location.href);
+    const roomFromUrl = cleanRoomId(url.searchParams.get("room") || "");
+    if(roomFromUrl){
+      el("roomIdJoin").value = roomFromUrl;
+      setText("topSub", "Room link opened. Enter your name & Join.");
+      setTimeout(()=> el("myNameJoin").focus(), 250);
+    }
+  }
+
+  async function ensureAnon(){
+    const { data: s1 } = await supabase.auth.getSession();
+    if(!s1?.session){
+      const { data, error } = await supabase.auth.signInAnonymously();
+      if(error) throw error;
+      client.uid = data.user.id;
+    }else{
+      client.uid = s1.session.user.id;
+    }
+
+    el("authInfo").textContent = "Connected (uid: " + client.uid.slice(0,8) + "…)";
+    await bootUI();
+  }
+
+  ensureAnon().catch((e)=>{
+    console.error(e);
+    showHomeError("Auth error: " + (e?.message || "unknown"));
+  });
+</script>
