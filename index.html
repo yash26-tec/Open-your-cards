@@ -794,41 +794,42 @@
         }
       }
 
-      function subscribeRoom(roomId, cb){
-        const rid = cleanRoomId(roomId);
+    function subscribeRoom(roomId, cb){
+  const rid = cleanRoomId(roomId);
+  let cancelled = false;
 
-        let cancelled = false;
-        (async ()=>{
-          try{
-            const row = await readRoom(rid);
-            if(cancelled) return;
-            cb(row ? row.doc : null);
-          }catch(e){
-            console.error(e);
-            if(cancelled) return;
-            cb(null);
-          }
-        })();
+  async function fetchOnce(){
+    try{
+      const row = await readRoom(rid);
+      if(!cancelled) cb(row ? row.doc : null);
+    }catch(e){
+      console.error(e);
+    }
+  }
 
-        const channel = supabase
-          .channel("room-" + rid)
-          .on("postgres_changes",
-            { event: "*", schema: "public", table: "rooms", filter: `id=eq.${rid}` },
-            async (payload) => {
-              try{
-                if(payload.eventType === "DELETE"){ cb(null); return; }
-                const row = await readRoom(rid);
-                cb(row ? row.doc : null);
-              }catch(e){ console.error(e); }
-            }
-          )
-          .subscribe();
+  // initial fetch
+  fetchOnce();
 
-        return () => {
-          cancelled = true;
-          supabase.removeChannel(channel);
-        };
-      }
+  // ✅ polling fallback (every 1.5s)
+  const poll = setInterval(fetchOnce, 1500);
+
+  // realtime (best effort)
+  const channel = supabase
+    .channel("room-" + rid)
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "rooms", filter: `id=eq.${rid}` },
+      fetchOnce
+    )
+    .subscribe();
+
+  return () => {
+    cancelled = true;
+    clearInterval(poll);
+    supabase.removeChannel(channel);
+  };
+}
+
 
       return { createRoom, joinRoom, subscribeRoom, patchRoom, leaveRoom };
     })();
