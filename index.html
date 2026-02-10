@@ -313,6 +313,144 @@
       color:#9d174d;
     }
 
+    /* ✅ Attractive Spin Wheel */
+    .wheelWrap{
+      display:grid;
+      place-items:center;
+      gap:10px;
+      padding:6px 0 2px;
+    }
+    .wheelStage{
+      position:relative;
+      width:240px;
+      height:240px;
+      display:grid;
+      place-items:center;
+    }
+    .wheel{
+      width:240px;height:240px;border-radius:50%;
+      border:1px solid rgba(219,39,119,.25);
+      box-shadow:
+        0 22px 50px rgba(219,39,119,.18),
+        0 10px 22px rgba(15,23,42,.08);
+      background:
+        conic-gradient(from -90deg,
+          rgba(219,39,119,.95) 0 180deg,
+          rgba(239,68,68,.95) 180deg 360deg
+        );
+      position:relative;
+      transform:rotate(0deg);
+      transition:transform 2.5s cubic-bezier(.12,.85,.22,1);
+      overflow:hidden;
+    }
+    .wheel::before{
+      content:"";
+      position:absolute; inset:10px;
+      border-radius:50%;
+      background:
+        radial-gradient(120px 120px at 30% 25%, rgba(255,255,255,.35), transparent 55%),
+        radial-gradient(160px 120px at 70% 75%, rgba(255,255,255,.18), transparent 55%);
+      pointer-events:none;
+      mix-blend-mode:screen;
+    }
+    .wheel::after{
+      content:"";
+      position:absolute; inset:0;
+      border-radius:50%;
+      background:
+        radial-gradient(closest-side, rgba(255,255,255,.22), transparent 62%),
+        radial-gradient(closest-side, rgba(0,0,0,.06), transparent 70%);
+      pointer-events:none;
+    }
+    .wheelLabel{
+      position:absolute;
+      width:100%;
+      height:100%;
+      display:grid;
+      place-items:center;
+      pointer-events:none;
+      font-weight:1000;
+      letter-spacing:.6px;
+      text-transform:uppercase;
+      color:#fff;
+      text-shadow:0 10px 26px rgba(15,23,42,.25);
+    }
+    .wheelLabel .truth{
+      position:absolute;
+      top:22%;
+      transform:rotate(-10deg);
+      font-size:22px;
+    }
+    .wheelLabel .dare{
+      position:absolute;
+      bottom:22%;
+      transform:rotate(10deg);
+      font-size:22px;
+    }
+    .wheelHub{
+      position:absolute;
+      width:74px;height:74px;border-radius:50%;
+      background:linear-gradient(180deg,#ffffff,#fff1f6);
+      border:1px solid rgba(219,39,119,.25);
+      box-shadow:0 14px 30px rgba(15,23,42,.12);
+      display:grid;place-items:center;
+    }
+    .wheelHub i{
+      display:block;
+      width:46px;height:46px;border-radius:50%;
+      background:linear-gradient(135deg,var(--blue),var(--blue2));
+      box-shadow:0 12px 26px rgba(219,39,119,.25);
+      position:relative;
+    }
+    .wheelPointer{
+      position:absolute;
+      top:-6px; left:50%;
+      transform:translateX(-50%);
+      width:0;height:0;
+      border-left:14px solid transparent;
+      border-right:14px solid transparent;
+      border-bottom:26px solid #ffffff;
+      filter:drop-shadow(0 10px 14px rgba(15,23,42,.18));
+    }
+    .wheelPointer::after{
+      content:"";
+      position:absolute;
+      left:-10px; top:6px;
+      width:20px;height:20px;border-radius:50%;
+      background:linear-gradient(135deg,var(--blue),var(--blue2));
+      border:2px solid #fff;
+      box-shadow:0 10px 18px rgba(219,39,119,.22);
+    }
+
+    .tdBadge{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:10px;
+      padding:10px 14px;
+      border-radius:999px;
+      font-weight:1000;
+      letter-spacing:.8px;
+      text-transform:uppercase;
+      border:1px solid rgba(219,39,119,.25);
+      background:rgba(255,255,255,.75);
+      box-shadow:0 10px 22px rgba(15,23,42,.06);
+      width:fit-content;
+      margin:0 auto;
+    }
+    .tdBadge.big{
+      font-size:16px;
+      padding:12px 18px;
+    }
+    .tdBadge.truth{
+      background:rgba(219,39,119,.12);
+      color:#9d174d;
+    }
+    .tdBadge.dare{
+      background:rgba(239,68,68,.10);
+      color:#b91c1c;
+    }
+
     .chatBox{
       margin-top:10px;
       border:1px solid var(--stroke);
@@ -559,8 +697,7 @@
         <div class="tdBoard">
           <div class="tdTop">
             <div class="tdWho">
-              <span class="pill" id="tdPerformerPill">Performer: —</span>
-              <span class="pill" id="tdChooserPill">Chooser: —</span>
+              <span class="pill" id="tdTurnPill">Turn: —</span>
               <span class="pill" id="tdPhasePill">Phase: —</span>
             </div>
             <div class="row" style="gap:8px">
@@ -569,7 +706,24 @@
               <button class="btn ghost" id="tdNextBtn">Next Spin</button>
             </div>
           </div>
-          <div class="tiny" id="tdHint">—</div>
+
+          <!-- ✅ Big TRUTH/DARE result badge (separate, prominent) -->
+          <div class="tdBadge big" id="tdResultBadge">—</div>
+
+          <!-- ✅ Attractive wheel -->
+          <div class="wheelWrap">
+            <div class="wheelStage">
+              <div class="wheelPointer" aria-hidden="true"></div>
+              <div class="wheel" id="wheel">
+                <div class="wheelLabel" aria-hidden="true">
+                  <div class="truth">TRUTH</div>
+                  <div class="dare">DARE</div>
+                </div>
+              </div>
+              <div class="wheelHub" aria-hidden="true"><i></i></div>
+            </div>
+            <div class="tiny" id="tdHint">—</div>
+          </div>
 
           <div class="cardsGrid" id="tdCards"></div>
         </div>
@@ -879,13 +1033,15 @@
     // ---------------------------
     function tdInit(){
       return {
-        turn: "p1",           // performer turn
+        turn: "p1",           // turn owner (spins + later next)
         phase: "spin",        // spin | list | chosen
         type: null,           // truth | dare
-        sample: [],           // [{i, t}] indices into pool OR direct text (we store text for stability)
+        spinDeg: 0,           // ✅ wheel rotation degrees (stored)
+        spinToken: null,      // ✅ changes each spin (for animation sync)
+        sample: [],           // store text
         chosenText: "",
         chosenAt: null,
-        chosenBy: null        // p1/p2 (chooser)
+        chosenBy: null        // p1/p2 (who selected from cards)
       };
     }
 
@@ -1161,7 +1317,6 @@
         const total = q.pick.length;
         pct = total ? Math.round(((room.idx+1)/total)*100) : 0;
       }else{
-        // TD has no linear progress
         pct = 0;
       }
       el("progFill").style.width = pct + "%";
@@ -1176,7 +1331,6 @@
       el("pickArea").style.display = room.mode === "pick" ? "block" : "none";
       el("tdArea").style.display   = room.mode === "td"   ? "block" : "none";
 
-      // bottom bar: keep for NHIE/PICK only (avoid confusion)
       el("bottomBar").style.display = room.mode === "td" ? "none" : "flex";
     }
 
@@ -1287,46 +1441,81 @@
       wrap.scrollTop = wrap.scrollHeight;
     }
 
+    // ✅ wheel animation guard (local only)
+    let lastSpinTokenLocal = null;
+
+    function setBadge(type){
+      const b = el("tdResultBadge");
+      b.classList.remove("truth","dare");
+      if(type === "truth"){
+        b.classList.add("truth");
+        b.textContent = "TRUTH";
+      }else if(type === "dare"){
+        b.classList.add("dare");
+        b.textContent = "DARE";
+      }else{
+        b.textContent = "—";
+      }
+    }
+
     function updateTDUI(room){
       const q = getQ(room);
       room.td = room.td || tdInit();
 
-      const performer = room.td.turn || "p1";
-      const chooser = otherRole(performer);
-      const performerName = performer==="p1" ? (room.players.p1.name||"P1") : (room.players.p2.name||"P2");
-      const chooserName   = chooser==="p1"   ? (room.players.p1.name||"P1") : (room.players.p2.name||"P2");
-
-      setText("tdPerformerPill", `Performer: ${performerName}`);
-      setText("tdChooserPill", `Chooser: ${chooserName}`);
+      const turn = room.td.turn || "p1";
+      const turnName = turn==="p1" ? (room.players.p1.name||"P1") : (room.players.p2.name||"P2");
+      setText("tdTurnPill", `Turn: ${turnName}`);
       setText("tdPhasePill", `Phase: ${room.td.phase || "spin"}`);
 
       const phase = room.td.phase || "spin";
       const type = room.td.type; // truth/dare
-      const typeLabel = type ? type.toUpperCase() : "—";
+      setBadge(type);
 
-      // Buttons guards
-      const canSpin = (phase === "spin") && (client.role === performer);
-      const canShuffle = (phase === "list") && (client.role === chooser);
-      const canNext = (phase === "chosen") && (client.role === performer);
+      // Buttons guards:
+      // - Spin: only turn player, only in spin phase
+      // - Shuffle + select: other player, only in list phase
+      // - Next Spin: only turn player, only in chosen phase
+      const other = otherRole(turn);
+
+      const canSpin = (phase === "spin") && (client.role === turn);
+      const canShuffle = (phase === "list") && (client.role === other);
+      const canNext = (phase === "chosen") && (client.role === turn);
 
       el("tdSpinBtn").disabled = !canSpin;
       el("tdShuffleBtn").disabled = !canShuffle;
       el("tdNextBtn").disabled = !canNext;
 
-      // Hint + qBox text/meta
+      // Wheel rotate (sync via td.spinDeg + td.spinToken)
+      const wheel = el("wheel");
+      const token = room.td.spinToken || null;
+      const deg = Number(room.td.spinDeg || 0);
+
+      if(token && token !== lastSpinTokenLocal){
+        lastSpinTokenLocal = token;
+        // animate to stored deg
+        wheel.style.transform = `rotate(${deg}deg)`;
+      }else if(!token){
+        // no spin yet: reset visual to 0
+        wheel.style.transform = `rotate(0deg)`;
+      }else{
+        // same token: keep as is (avoid re-animating on every render)
+      }
+
+      // Main text + hint (no "performer/chooser", no "must do" line)
       if(phase === "spin"){
-        setText("qText", "🎡 Spin for TRUTH or DARE");
-        setText("qMeta", `Truth/Dare • ${performerName} will spin`);
-        setText("tdHint", `${performerName} (Performer) spin karega. ${chooserName} (Chooser) select karega.`);
+        setText("qText", "🎡 Spin the wheel");
+        setText("qMeta", `Truth/Dare • ${turnName} spins`);
+        setText("tdHint", `${turnName} spin karega. Dusra player cards me se select karega.`);
+        setBadge(null);
       }else if(phase === "list"){
-        setText("qText", type === "truth" ? "TRUTH" : "DARE");
-        setText("qMeta", `Truth/Dare • ${chooserName} choose karega`);
-        setText("tdHint", `Type: ${typeLabel} • ${chooserName} select karega • ${performerName} perform karega`);
+        setText("qText", "Pick 1 card");
+        setText("qMeta", `Truth/Dare • cards`);
+        setText("tdHint", `Select 1 card. (Shuffle available)`);
       }else{
         const chosen = room.td.chosenText || "—";
         setText("qText", chosen);
-        setText("qMeta", `Chosen • ${typeLabel}`);
-        setText("tdHint", `👉 ${chooserName} selected — ${performerName} must do this. (Done? Performer taps Next Spin)`);
+        setText("qMeta", `Truth/Dare • selected`);
+        setText("tdHint", `Done? Turn player "Next Spin" dabaye.`);
       }
 
       // Cards list
@@ -1340,15 +1529,14 @@
         if(!sample.length){
           cardsWrap.innerHTML = `<div class="tiny">No cards found. Add more in Manage → Truth/Dare.</div>`;
         }else{
-          const chooserCanClick = (client.role === chooser);
+          const otherCanClick = (client.role === other);
           cardsWrap.innerHTML = sample.map((t,i)=> {
             const safe = String(t||"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
               .replaceAll('"',"&quot;").replaceAll("'","&#039;");
-            return `<button class="cardBtn" data-tdpick="${i}" ${chooserCanClick ? "" : "disabled"}>${safe}</button>`;
+            return `<button class="cardBtn" data-tdpick="${i}" ${otherCanClick ? "" : "disabled"}>${safe}</button>`;
           }).join("");
         }
       }else{
-        // chosen
         if(chosenText){
           const safe = String(chosenText).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
             .replaceAll('"',"&quot;").replaceAll("'","&#039;");
@@ -1358,17 +1546,7 @@
         }
       }
 
-      // mark selected in list if any (rare)
-      if(phase === "list" && chosenText){
-        [...cardsWrap.querySelectorAll(".cardBtn")].forEach(b=>{
-          if(b.textContent === chosenText) b.classList.add("selected");
-        });
-      }
-
-      // chat
       renderChat(room);
-
-      // TD has no progress bar
       setProgress(room);
     }
 
@@ -1402,7 +1580,6 @@
       setText("p1Name2", room.players.p1.name || "Player 1");
       setText("p2Name2", room.players.p2.name || "Player 2");
 
-      // ensure fields exist
       room.td = room.td || tdInit();
       room.chat = Array.isArray(room.chat) ? room.chat : [];
 
@@ -1444,12 +1621,10 @@
           updatePickUI(room);
         }
 
-        // host-only controls
         el("next").disabled = !(client.role==="p1");
         el("reset").disabled = !(client.role==="p1");
       }
 
-      // TD render
       if(room.mode === "td"){
         updateTDUI(room);
       }
@@ -1510,12 +1685,10 @@
 
           doc.shuffle = doc.shuffle || { nhie:true, pick:true };
 
-          // ✅ keep all modes questions in room
           doc.questions = q;
           doc.status = "playing";
           doc.mode = doc.mode || "nhie";
 
-          // init mode state
           const len = doc.mode === "nhie" ? (q.nhie||[]).length : (q.pick||[]).length;
           const doShuffle = doc.mode === "nhie" ? doc.shuffle.nhie : doc.shuffle.pick;
           doc.order = buildOrder(len, doShuffle);
@@ -1551,7 +1724,7 @@
     }
 
     async function setMode(mode){
-      if(client.role !== "p1") return; // host controls mode
+      if(client.role !== "p1") return;
       if(!client.roomId) return;
 
       await RoomAPI.patchRoom(client.roomId, (doc) => {
@@ -1579,6 +1752,8 @@
           doc.td.turn = "p1";
           doc.td.phase = "spin";
           doc.td.type = null;
+          doc.td.spinDeg = 0;
+          doc.td.spinToken = null;
           doc.td.sample = [];
           doc.td.chosenText = "";
           doc.td.chosenBy = null;
@@ -1700,15 +1875,20 @@
     }
 
     // ---------------------------
-    // Truth/Dare actions (SOLID guards)
-    // Performer spins, chooser selects
+    // Truth/Dare actions (Wheel-based)
+    // Turn player spins. Other player selects.
     // ---------------------------
     function tdPool(doc){
       const q = getQ(doc);
-      return {
-        truth: q.truth,
-        dare: q.dare
-      };
+      return { truth: q.truth, dare: q.dare };
+    }
+
+    function typeFromDeg(deg){
+      const d = ((Number(deg)||0) % 360 + 360) % 360;
+      // pointer is fixed on top, wheel rotated clockwise by deg
+      // pointer sees wheel angle = (360 - d) % 360
+      const pointerAngle = (360 - d) % 360;
+      return pointerAngle < 180 ? "truth" : "dare";
     }
 
     async function tdSpin(){
@@ -1718,20 +1898,26 @@
         if(doc.mode !== "td") return doc;
 
         doc.td = doc.td || tdInit();
-        const performer = doc.td.turn || "p1";
-        const chooser = otherRole(performer);
+        const turn = doc.td.turn || "p1";
+        const other = otherRole(turn);
 
-        // ✅ guard: only performer can spin, only in spin phase
         if(doc.td.phase !== "spin") return doc;
-        if(client.role !== performer) return doc;
+        if(client.role !== turn) return doc;
 
-        const r = Math.random() < 0.5 ? "truth" : "dare";
-        const pool = tdPool(doc)[r] || [];
+        // ✅ make a nice long spin + random stop, store degrees so both devices match
+        const base = 360 * (6 + Math.floor(Math.random()*3));   // 6-8 rounds
+        const stop = Math.floor(Math.random()*360);             // final stop
+        const deg = base + stop;
+
+        const type = typeFromDeg(deg);
+        const pool = tdPool(doc)[type] || [];
         const pick = pickSampleIndices(pool.length, 10);
         const sample = pick.map(i => pool[i]);
 
-        doc.td.type = r;
-        doc.td.sample = sample; // store text (stable on both devices)
+        doc.td.spinDeg = deg;
+        doc.td.spinToken = Date.now() + "_" + Math.random().toString(16).slice(2);
+        doc.td.type = type;
+        doc.td.sample = sample;
         doc.td.phase = "list";
         doc.td.chosenText = "";
         doc.td.chosenBy = null;
@@ -1748,12 +1934,11 @@
         if(doc.mode !== "td") return doc;
 
         doc.td = doc.td || tdInit();
-        const performer = doc.td.turn || "p1";
-        const chooser = otherRole(performer);
+        const turn = doc.td.turn || "p1";
+        const other = otherRole(turn);
 
-        // ✅ guard: only chooser can shuffle, only in list
         if(doc.td.phase !== "list") return doc;
-        if(client.role !== chooser) return doc;
+        if(client.role !== other) return doc;
 
         const type = doc.td.type;
         if(type !== "truth" && type !== "dare") return doc;
@@ -1772,19 +1957,18 @@
         if(doc.mode !== "td") return doc;
 
         doc.td = doc.td || tdInit();
-        const performer = doc.td.turn || "p1";
-        const chooser = otherRole(performer);
+        const turn = doc.td.turn || "p1";
+        const other = otherRole(turn);
 
-        // ✅ guard: only chooser can pick, only in list
         if(doc.td.phase !== "list") return doc;
-        if(client.role !== chooser) return doc;
+        if(client.role !== other) return doc;
 
         const sample = Array.isArray(doc.td.sample) ? doc.td.sample : [];
         const txt = sample[sampleIndex];
         if(!txt) return doc;
 
         doc.td.chosenText = txt;
-        doc.td.chosenBy = chooser;
+        doc.td.chosenBy = other;
         doc.td.chosenAt = nowISO();
         doc.td.phase = "chosen";
 
@@ -1799,20 +1983,19 @@
         if(doc.mode !== "td") return doc;
 
         doc.td = doc.td || tdInit();
-        const performer = doc.td.turn || "p1";
+        const turn = doc.td.turn || "p1";
 
-        // ✅ guard: only performer can proceed, only in chosen phase
         if(doc.td.phase !== "chosen") return doc;
-        if(client.role !== performer) return doc;
+        if(client.role !== turn) return doc;
 
-        doc.td.turn = otherRole(performer); // swap
+        doc.td.turn = otherRole(turn); // swap turn
         doc.td.phase = "spin";
         doc.td.type = null;
         doc.td.sample = [];
         doc.td.chosenText = "";
         doc.td.chosenBy = null;
         doc.td.chosenAt = null;
-
+        // keep wheel as last result visually (looks cool), token stays same
         return doc;
       });
     }
@@ -1838,7 +2021,6 @@
         };
 
         doc.chat.push(msg);
-        // keep last 40
         if(doc.chat.length > 40) doc.chat = doc.chat.slice(-40);
         return doc;
       });
