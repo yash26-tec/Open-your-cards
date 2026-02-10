@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>2P Party Game (Supabase Rooms) — FINAL (Pink/Red + Shuffle)</title>
+  <title>2P Party Game (Supabase Rooms) — FINAL (Pink/Red + Shuffle + Truth/Dare + Chat)</title>
   <style>
     :root{
       /* ✅ Pinkish-Red Theme */
@@ -276,6 +276,87 @@
       color:#9d174d;
     }
 
+    /* ✅ Truth/Dare + Chat UI */
+    .tdBoard{
+      margin-top:10px;border:1px solid var(--stroke);
+      border-radius:18px;padding:12px;
+      background:linear-gradient(180deg,#ffffff,#fff5f9);
+      display:grid; gap:10px;
+    }
+    .tdTop{
+      display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;
+    }
+    .tdWho{
+      display:flex;gap:8px;flex-wrap:wrap;align-items:center;
+    }
+    .cardsGrid{
+      display:grid;
+      grid-template-columns:1fr;
+      gap:10px;
+    }
+    .cardBtn{
+      text-align:left;
+      padding:12px;
+      border-radius:16px;
+      border:1px solid var(--stroke);
+      background:#fff;
+      box-shadow:0 8px 18px rgba(15,23,42,.05);
+      cursor:pointer;
+      font-weight:1000;
+      line-height:1.25;
+    }
+    .cardBtn:hover{filter:brightness(1.01)}
+    .cardBtn:disabled{opacity:.50; cursor:not-allowed}
+    .cardBtn.selected{
+      background:rgba(219,39,119,.10);
+      border-color:rgba(219,39,119,.25);
+      color:#9d174d;
+    }
+
+    .chatBox{
+      margin-top:10px;
+      border:1px solid var(--stroke);
+      border-radius:18px;
+      background:linear-gradient(180deg,#ffffff,#fff7fb);
+      box-shadow:0 10px 22px rgba(15,23,42,.06);
+      overflow:hidden;
+    }
+    .chatHead{
+      padding:10px 12px;
+      display:flex;justify-content:space-between;align-items:center;gap:10px;
+      border-bottom:1px solid #ffe3ef;
+      background:rgba(255,255,255,.75);
+    }
+    .chatTitle{font-weight:1000}
+    .chatMsgs{
+      padding:10px 12px;
+      max-height:220px;
+      overflow:auto;
+      display:grid; gap:8px;
+    }
+    .msg{
+      border:1px solid var(--stroke);
+      border-radius:14px;
+      padding:10px;
+      background:#fff;
+      font-size:13px;
+      line-height:1.3;
+    }
+    .msgTop{
+      display:flex;justify-content:space-between;gap:10px;align-items:center;
+      margin-bottom:4px;
+    }
+    .msgName{font-weight:1000;color:#9d174d}
+    .msgTime{font-size:11px;color:var(--muted);white-space:nowrap}
+    .chatSend{
+      padding:10px 12px;
+      border-top:1px solid #ffe3ef;
+      display:flex;gap:10px;
+      background:rgba(255,255,255,.75);
+    }
+    .chatSend input{flex:1}
+    .chatSend .btn{flex:0 0 auto; padding:12px 14px}
+
     .screen{display:none}
     .screen.show{display:block}
 
@@ -310,6 +391,7 @@
       <div class="seg" id="modeSeg" style="display:none;">
         <button id="tabNhie" class="active">Never Have I Ever</button>
         <button id="tabPick">Pick One</button>
+        <button id="tabTD">Truth / Dare</button>
       </div>
     </div>
 
@@ -472,6 +554,39 @@
         <div class="tiny" style="margin-top:8px;">Pick One has no score. Only selections are shown.</div>
       </div>
 
+      <!-- TRUTH / DARE -->
+      <div id="tdArea" style="display:none; margin-top:10px;">
+        <div class="tdBoard">
+          <div class="tdTop">
+            <div class="tdWho">
+              <span class="pill" id="tdPerformerPill">Performer: —</span>
+              <span class="pill" id="tdChooserPill">Chooser: —</span>
+              <span class="pill" id="tdPhasePill">Phase: —</span>
+            </div>
+            <div class="row" style="gap:8px">
+              <button class="btn selected" id="tdSpinBtn">🎡 Spin</button>
+              <button class="btn" id="tdShuffleBtn">🔀 Shuffle</button>
+              <button class="btn ghost" id="tdNextBtn">Next Spin</button>
+            </div>
+          </div>
+          <div class="tiny" id="tdHint">—</div>
+
+          <div class="cardsGrid" id="tdCards"></div>
+        </div>
+
+        <div class="chatBox">
+          <div class="chatHead">
+            <div class="chatTitle">💬 Chat</div>
+            <div class="tiny" id="chatMeta">Last 40 messages</div>
+          </div>
+          <div class="chatMsgs" id="chatMsgs"></div>
+          <div class="chatSend">
+            <input id="chatInput" placeholder="Type a message…" maxlength="220"/>
+            <button class="btn selected" id="chatSendBtn">Send</button>
+          </div>
+        </div>
+      </div>
+
       <div class="tiny" style="margin-top:10px;">
         Room: <span class="mono" id="gameRoomId">—</span> • You are: <span class="mono" id="gameMeRole">—</span>
       </div>
@@ -479,7 +594,7 @@
 
   </div>
 
-  <div class="bottomBar">
+  <div class="bottomBar" id="bottomBar">
     <div class="bottomInner">
       <button class="btn ghost" id="reset">Reset</button>
       <button class="btn selected" id="next">Next</button>
@@ -574,6 +689,29 @@
           <div class="list" id="pickList"></div>
         </div>
 
+        <!-- ✅ Truth/Dare manage -->
+        <div class="divider"></div>
+        <div class="grid">
+          <div class="hint"><b>Truth</b> – Add unlimited:</div>
+          <input id="truthNew" placeholder="e.g. What’s your biggest fear?" />
+          <div class="row">
+            <button class="btn selected" id="addTruth">Add</button>
+            <button class="btn danger" id="clearTruth">Clear All</button>
+          </div>
+          <div class="list" id="truthList"></div>
+        </div>
+
+        <div class="divider"></div>
+        <div class="grid">
+          <div class="hint"><b>Dare</b> – Add unlimited:</div>
+          <input id="dareNew" placeholder="e.g. Do 10 push-ups right now" />
+          <div class="row">
+            <button class="btn selected" id="addDare">Add</button>
+            <button class="btn danger" id="clearDare">Clear All</button>
+          </div>
+          <div class="list" id="dareList"></div>
+        </div>
+
         <div class="divider"></div>
 
         <div class="row">
@@ -631,10 +769,27 @@
       return order;
     }
 
+    function pickSampleIndices(total, want=10){
+      const n = Math.min(total, want);
+      const idx = Array.from({length: total}, (_,i)=>i);
+      shuffle(idx);
+      return idx.slice(0, n);
+    }
+
+    function nowISO(){ return new Date().toISOString(); }
+    function fmtTime(ts){
+      try{
+        const d = new Date(ts);
+        const hh = String(d.getHours()).padStart(2,"0");
+        const mm = String(d.getMinutes()).padStart(2,"0");
+        return `${hh}:${mm}`;
+      }catch{ return ""; }
+    }
+
     // ---------------------------
     // Questions (Manage) - local
     // ---------------------------
-    const QKEY = "party_questions_local_v2";
+    const QKEY = "party_questions_local_v3"; // bumped
     const ADMIN_PASSWORD = "Admin@123";
 
     // ✅ shuffle settings stored locally
@@ -665,23 +820,56 @@
         {q:"Pick one", o1:"Pizza", o2:"Burger"},
         {q:"Pick one", o1:"Netflix", o2:"YouTube"},
         {q:"Pick one", o1:"Beach", o2:"Mountains"}
+      ],
+      truth:[
+        "What’s the most embarrassing thing you’ve done?",
+        "Who was your first crush?",
+        "What’s your biggest insecurity?",
+        "What’s a secret you’ve never told anyone?"
+      ],
+      dare:[
+        "Do 10 squats right now",
+        "Send a funny voice note to your friend (optional)",
+        "Do your best dance for 10 seconds",
+        "Say ‘I love pizza’ in a dramatic voice"
       ]
     };
 
-    const questions = { nhie:[], pick:[] };
+    const questions = { nhie:[], pick:[], truth:[], dare:[] };
 
     function loadQuestions(){
+      // try v3
       try{
         const v = JSON.parse(localStorage.getItem(QKEY));
         if(!v) throw 0;
         questions.nhie = Array.isArray(v.nhie) ? v.nhie : [];
         questions.pick = Array.isArray(v.pick) ? v.pick : [];
-      }catch{
-        questions.nhie = deepClone(SAMPLE_Q.nhie);
-        questions.pick = deepClone(SAMPLE_Q.pick);
-        saveQuestions();
-      }
+        questions.truth = Array.isArray(v.truth) ? v.truth : [];
+        questions.dare = Array.isArray(v.dare) ? v.dare : [];
+        return;
+      }catch{}
+
+      // fallback old v2 if exists
+      try{
+        const old = JSON.parse(localStorage.getItem("party_questions_local_v2"));
+        if(old && typeof old === "object"){
+          questions.nhie = Array.isArray(old.nhie) ? old.nhie : deepClone(SAMPLE_Q.nhie);
+          questions.pick = Array.isArray(old.pick) ? old.pick : deepClone(SAMPLE_Q.pick);
+          questions.truth = deepClone(SAMPLE_Q.truth);
+          questions.dare = deepClone(SAMPLE_Q.dare);
+          saveQuestions();
+          return;
+        }
+      }catch{}
+
+      // default sample
+      questions.nhie = deepClone(SAMPLE_Q.nhie);
+      questions.pick = deepClone(SAMPLE_Q.pick);
+      questions.truth = deepClone(SAMPLE_Q.truth);
+      questions.dare = deepClone(SAMPLE_Q.dare);
+      saveQuestions();
     }
+
     function saveQuestions(){
       localStorage.setItem(QKEY, JSON.stringify(questions));
     }
@@ -689,6 +877,18 @@
     // ---------------------------
     // Room doc model
     // ---------------------------
+    function tdInit(){
+      return {
+        turn: "p1",           // performer turn
+        phase: "spin",        // spin | list | chosen
+        type: null,           // truth | dare
+        sample: [],           // [{i, t}] indices into pool OR direct text (we store text for stability)
+        chosenText: "",
+        chosenAt: null,
+        chosenBy: null        // p1/p2 (chooser)
+      };
+    }
+
     function makeNewRoomDoc({roomId, hostUid, hostName, q, shuffleCfg}){
       const sh = shuffleCfg || { nhie:true, pick:true };
       return {
@@ -699,11 +899,13 @@
           p1: { uid: hostUid, name: hostName },
           p2: { uid: "", name: "" }
         },
-        mode: "nhie",
+        mode: "nhie", // nhie | pick | td
         shuffle: sh, // ✅ store shuffle prefs in room
         idx: 0,
         order: buildOrder((q?.nhie||[]).length, sh.nhie),
-        questions: q || {nhie:[], pick:[]},
+        questions: q || {nhie:[], pick:[], truth:[], dare:[]},
+        td: tdInit(),
+        chat: [], // last 40
         state: {
           counts: {p1:0,p2:0},
           last: {p1:"—",p2:"—"},
@@ -836,6 +1038,9 @@
             doc.state.pickAnswered = {p1:false,p2:false};
             doc.state.pickTurn = "p1";
 
+            doc.td = tdInit();
+            doc.chat = [];
+
             doc.updatedAt = Date.now();
             const ok = await writeRoomCAS(rid, row.version, doc);
             if(ok) return;
@@ -931,31 +1136,56 @@
       });
     }
 
-    // ---------------------------
-    // Render
-    // ---------------------------
-    function getQ(room){ return room.questions || {nhie:[], pick:[]}; }
+    function otherRole(r){ return r === "p1" ? "p2" : "p1"; }
 
-    function getCurrentItem(room){
-      const q = getQ(room);
-      const list = room.mode === "nhie" ? (q.nhie||[]) : (q.pick||[]);
-      if(!list.length) return null;
-      const realIdx = room.order?.[room.idx] ?? 0;
-      return list[realIdx] ?? null;
+    // ---------------------------
+    // Render helpers
+    // ---------------------------
+    function getQ(room){
+      const q = room.questions || {};
+      return {
+        nhie: Array.isArray(q.nhie) ? q.nhie : [],
+        pick: Array.isArray(q.pick) ? q.pick : [],
+        truth: Array.isArray(q.truth) ? q.truth : [],
+        dare: Array.isArray(q.dare) ? q.dare : []
+      };
     }
 
     function setProgress(room){
       const q = getQ(room);
-      const total = room.mode === "nhie" ? (q.nhie||[]).length : (q.pick||[]).length;
-      const pct = total ? Math.round(((room.idx+1)/total)*100) : 0;
+      let pct = 0;
+      if(room.mode === "nhie"){
+        const total = q.nhie.length;
+        pct = total ? Math.round(((room.idx+1)/total)*100) : 0;
+      }else if(room.mode === "pick"){
+        const total = q.pick.length;
+        pct = total ? Math.round(((room.idx+1)/total)*100) : 0;
+      }else{
+        // TD has no linear progress
+        pct = 0;
+      }
       el("progFill").style.width = pct + "%";
     }
 
     function setModeUI(room){
       el("tabNhie").classList.toggle("active", room.mode === "nhie");
       el("tabPick").classList.toggle("active", room.mode === "pick");
+      el("tabTD").classList.toggle("active", room.mode === "td");
+
       el("nhieArea").style.display = room.mode === "nhie" ? "block" : "none";
       el("pickArea").style.display = room.mode === "pick" ? "block" : "none";
+      el("tdArea").style.display   = room.mode === "td"   ? "block" : "none";
+
+      // bottom bar: keep for NHIE/PICK only (avoid confusion)
+      el("bottomBar").style.display = room.mode === "td" ? "none" : "flex";
+    }
+
+    function getCurrentItem(room){
+      const q = getQ(room);
+      const list = room.mode === "nhie" ? q.nhie : q.pick;
+      if(!list.length) return null;
+      const realIdx = room.order?.[room.idx] ?? 0;
+      return list[realIdx] ?? null;
     }
 
     function updateNhieUI(room){
@@ -1029,7 +1259,121 @@
       el("opt2Btn").classList.toggle("selected", sel && sel !== "—" && sel === o2);
     }
 
+    function renderChat(room){
+      const msgs = Array.isArray(room.chat) ? room.chat : [];
+      const wrap = el("chatMsgs");
+      if(!wrap) return;
+      if(!msgs.length){
+        wrap.innerHTML = `<div class="tiny">No messages yet. Say something 😄</div>`;
+        return;
+      }
+      wrap.innerHTML = msgs.map(m => {
+        const name = (m?.name || "Player").toString().slice(0,24);
+        const t = m?.ts || null;
+        const time = t ? fmtTime(t) : "";
+        const text = (m?.text || "").toString()
+          .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+          .replaceAll('"',"&quot;").replaceAll("'","&#039;");
+        return `
+          <div class="msg">
+            <div class="msgTop">
+              <div class="msgName">${name}</div>
+              <div class="msgTime">${time}</div>
+            </div>
+            <div>${text}</div>
+          </div>
+        `;
+      }).join("");
+      wrap.scrollTop = wrap.scrollHeight;
+    }
+
+    function updateTDUI(room){
+      const q = getQ(room);
+      room.td = room.td || tdInit();
+
+      const performer = room.td.turn || "p1";
+      const chooser = otherRole(performer);
+      const performerName = performer==="p1" ? (room.players.p1.name||"P1") : (room.players.p2.name||"P2");
+      const chooserName   = chooser==="p1"   ? (room.players.p1.name||"P1") : (room.players.p2.name||"P2");
+
+      setText("tdPerformerPill", `Performer: ${performerName}`);
+      setText("tdChooserPill", `Chooser: ${chooserName}`);
+      setText("tdPhasePill", `Phase: ${room.td.phase || "spin"}`);
+
+      const phase = room.td.phase || "spin";
+      const type = room.td.type; // truth/dare
+      const typeLabel = type ? type.toUpperCase() : "—";
+
+      // Buttons guards
+      const canSpin = (phase === "spin") && (client.role === performer);
+      const canShuffle = (phase === "list") && (client.role === chooser);
+      const canNext = (phase === "chosen") && (client.role === performer);
+
+      el("tdSpinBtn").disabled = !canSpin;
+      el("tdShuffleBtn").disabled = !canShuffle;
+      el("tdNextBtn").disabled = !canNext;
+
+      // Hint + qBox text/meta
+      if(phase === "spin"){
+        setText("qText", "🎡 Spin for TRUTH or DARE");
+        setText("qMeta", `Truth/Dare • ${performerName} will spin`);
+        setText("tdHint", `${performerName} (Performer) spin karega. ${chooserName} (Chooser) select karega.`);
+      }else if(phase === "list"){
+        setText("qText", type === "truth" ? "TRUTH" : "DARE");
+        setText("qMeta", `Truth/Dare • ${chooserName} choose karega`);
+        setText("tdHint", `Type: ${typeLabel} • ${chooserName} select karega • ${performerName} perform karega`);
+      }else{
+        const chosen = room.td.chosenText || "—";
+        setText("qText", chosen);
+        setText("qMeta", `Chosen • ${typeLabel}`);
+        setText("tdHint", `👉 ${chooserName} selected — ${performerName} must do this. (Done? Performer taps Next Spin)`);
+      }
+
+      // Cards list
+      const cardsWrap = el("tdCards");
+      const sample = Array.isArray(room.td.sample) ? room.td.sample : [];
+      const chosenText = room.td.chosenText || "";
+
+      if(phase === "spin"){
+        cardsWrap.innerHTML = `<div class="tiny">Spin ke baad yahan 10 cards dikhenge.</div>`;
+      }else if(phase === "list"){
+        if(!sample.length){
+          cardsWrap.innerHTML = `<div class="tiny">No cards found. Add more in Manage → Truth/Dare.</div>`;
+        }else{
+          const chooserCanClick = (client.role === chooser);
+          cardsWrap.innerHTML = sample.map((t,i)=> {
+            const safe = String(t||"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+              .replaceAll('"',"&quot;").replaceAll("'","&#039;");
+            return `<button class="cardBtn" data-tdpick="${i}" ${chooserCanClick ? "" : "disabled"}>${safe}</button>`;
+          }).join("");
+        }
+      }else{
+        // chosen
+        if(chosenText){
+          const safe = String(chosenText).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+            .replaceAll('"',"&quot;").replaceAll("'","&#039;");
+          cardsWrap.innerHTML = `<button class="cardBtn selected" disabled>${safe}</button>`;
+        }else{
+          cardsWrap.innerHTML = `<div class="tiny">—</div>`;
+        }
+      }
+
+      // mark selected in list if any (rare)
+      if(phase === "list" && chosenText){
+        [...cardsWrap.querySelectorAll(".cardBtn")].forEach(b=>{
+          if(b.textContent === chosenText) b.classList.add("selected");
+        });
+      }
+
+      // chat
+      renderChat(room);
+
+      // TD has no progress bar
+      setProgress(room);
+    }
+
     function renderFromRoom(room){
+      // lobby
       setText("lobbyRoomId", room.roomId);
       setText("lobbyP1", room.players.p1.name || "Waiting…");
       setText("lobbyP2", room.players.p2.name || "Waiting…");
@@ -1058,47 +1402,57 @@
       setText("p1Name2", room.players.p1.name || "Player 1");
       setText("p2Name2", room.players.p2.name || "Player 2");
 
+      // ensure fields exist
+      room.td = room.td || tdInit();
+      room.chat = Array.isArray(room.chat) ? room.chat : [];
+
       setModeUI(room);
 
-      setText("p1Count", room.state.counts.p1 || 0);
-      setText("p2Count", room.state.counts.p2 || 0);
-
-      const nhieDone = room.state.nhieAnswered.p1 && room.state.nhieAnswered.p2;
-      el("scoreP1").classList.toggle("active", room.mode==="nhie" && room.state.nhieTurn==="p1" && !nhieDone);
-      el("scoreP2").classList.toggle("active", room.mode==="nhie" && room.state.nhieTurn==="p2" && !nhieDone);
-      if(room.mode!=="nhie"){ el("scoreP1").classList.remove("active"); el("scoreP2").classList.remove("active"); }
-
-      const item = getCurrentItem(room);
+      // NHIE/PICK render
       const q = getQ(room);
+      const item = getCurrentItem(room);
 
-      if(!item){
-        setText("qText", "No questions yet.");
-        setText("qMeta", "Open Manage → add questions");
-        el("opt1Btn").textContent = "Option 1";
-        el("opt2Btn").textContent = "Option 2";
-        setProgress(room);
-        updateNhieUI(room);
-        updatePickUI(room);
-        return;
+      if(room.mode === "nhie" || room.mode === "pick"){
+        setText("p1Count", room.state.counts.p1 || 0);
+        setText("p2Count", room.state.counts.p2 || 0);
+
+        const nhieDone = room.state.nhieAnswered.p1 && room.state.nhieAnswered.p2;
+        el("scoreP1").classList.toggle("active", room.mode==="nhie" && room.state.nhieTurn==="p1" && !nhieDone);
+        el("scoreP2").classList.toggle("active", room.mode==="nhie" && room.state.nhieTurn==="p2" && !nhieDone);
+        if(room.mode!=="nhie"){ el("scoreP1").classList.remove("active"); el("scoreP2").classList.remove("active"); }
+
+        if(!item){
+          setText("qText", "No questions yet.");
+          setText("qMeta", "Open Manage → add questions");
+          el("opt1Btn").textContent = "Option 1";
+          el("opt2Btn").textContent = "Option 2";
+          setProgress(room);
+          updateNhieUI(room);
+          updatePickUI(room);
+        }else if(room.mode === "nhie"){
+          setText("qText", item);
+          setText("qMeta", `Never Have I Ever • ${room.idx+1}/${q.nhie.length}`);
+          setProgress(room);
+          updateNhieUI(room);
+        }else{
+          const qq = item.q?.trim() ? item.q.trim() : "Pick one";
+          setText("qText", qq);
+          setText("qMeta", `Pick One • ${room.idx+1}/${q.pick.length}`);
+          el("opt1Btn").textContent = item.o1 || "Option 1";
+          el("opt2Btn").textContent = item.o2 || "Option 2";
+          setProgress(room);
+          updatePickUI(room);
+        }
+
+        // host-only controls
+        el("next").disabled = !(client.role==="p1");
+        el("reset").disabled = !(client.role==="p1");
       }
 
-      if(room.mode === "nhie"){
-        setText("qText", item);
-        setText("qMeta", `Never Have I Ever • ${room.idx+1}/${(q.nhie||[]).length}`);
-        setProgress(room);
-        updateNhieUI(room);
-      }else{
-        const qq = item.q?.trim() ? item.q.trim() : "Pick one";
-        setText("qText", qq);
-        setText("qMeta", `Pick One • ${room.idx+1}/${(q.pick||[]).length}`);
-        el("opt1Btn").textContent = item.o1 || "Option 1";
-        el("opt2Btn").textContent = item.o2 || "Option 2";
-        setProgress(room);
-        updatePickUI(room);
+      // TD render
+      if(room.mode === "td"){
+        updateTDUI(room);
       }
-
-      el("next").disabled = !(client.role==="p1");
-      el("reset").disabled = !(client.role==="p1");
     }
 
     // ---------------------------
@@ -1154,13 +1508,14 @@
           const both = doc.players.p1.uid && doc.players.p2.uid;
           if(!both) return doc;
 
-          // keep room shuffle settings (or init)
           doc.shuffle = doc.shuffle || { nhie:true, pick:true };
 
+          // ✅ keep all modes questions in room
           doc.questions = q;
           doc.status = "playing";
           doc.mode = doc.mode || "nhie";
 
+          // init mode state
           const len = doc.mode === "nhie" ? (q.nhie||[]).length : (q.pick||[]).length;
           const doShuffle = doc.mode === "nhie" ? doc.shuffle.nhie : doc.shuffle.pick;
           doc.order = buildOrder(len, doShuffle);
@@ -1173,6 +1528,9 @@
           doc.state.pickLast = {p1:"—",p2:"—"};
           doc.state.pickAnswered = {p1:false,p2:false};
           doc.state.pickTurn = "p1";
+
+          doc.td = tdInit();
+          doc.chat = [];
 
           return doc;
         });
@@ -1193,27 +1551,39 @@
     }
 
     async function setMode(mode){
-      if(client.role !== "p1") return;
+      if(client.role !== "p1") return; // host controls mode
       if(!client.roomId) return;
 
       await RoomAPI.patchRoom(client.roomId, (doc) => {
         doc.mode = mode;
         doc.shuffle = doc.shuffle || { nhie:true, pick:true };
 
-        const q = doc.questions || {nhie:[], pick:[]};
-        const len = mode === "nhie" ? (q.nhie||[]).length : (q.pick||[]).length;
-        const doShuffle = mode === "nhie" ? doc.shuffle.nhie : doc.shuffle.pick;
+        const q = getQ(doc);
 
-        doc.order = buildOrder(len, doShuffle);
-        doc.idx = 0;
+        if(mode === "nhie" || mode === "pick"){
+          const len = mode === "nhie" ? q.nhie.length : q.pick.length;
+          const doShuffle = mode === "nhie" ? doc.shuffle.nhie : doc.shuffle.pick;
 
-        doc.state.last = {p1:"—",p2:"—"};
-        doc.state.nhieAnswered = {p1:false,p2:false};
-        doc.state.nhieTurn = "p1";
+          doc.order = buildOrder(len, doShuffle);
+          doc.idx = 0;
 
-        doc.state.pickLast = {p1:"—",p2:"—"};
-        doc.state.pickAnswered = {p1:false,p2:false};
-        doc.state.pickTurn = "p1";
+          doc.state.last = {p1:"—",p2:"—"};
+          doc.state.nhieAnswered = {p1:false,p2:false};
+          doc.state.nhieTurn = "p1";
+
+          doc.state.pickLast = {p1:"—",p2:"—"};
+          doc.state.pickAnswered = {p1:false,p2:false};
+          doc.state.pickTurn = "p1";
+        }else{
+          doc.td = doc.td || tdInit();
+          doc.td.turn = "p1";
+          doc.td.phase = "spin";
+          doc.td.type = null;
+          doc.td.sample = [];
+          doc.td.chosenText = "";
+          doc.td.chosenBy = null;
+          doc.td.chosenAt = null;
+        }
         return doc;
       });
     }
@@ -1270,9 +1640,10 @@
 
       await RoomAPI.patchRoom(client.roomId, (doc) => {
         if(doc.status !== "playing") return doc;
+        if(doc.mode !== "nhie" && doc.mode !== "pick") return doc;
 
-        const q = doc.questions || {nhie:[], pick:[]};
-        const len = doc.mode === "nhie" ? (q.nhie||[]).length : (q.pick||[]).length;
+        const q = getQ(doc);
+        const len = doc.mode === "nhie" ? q.nhie.length : q.pick.length;
         if(!len) return doc;
 
         if(doc.mode === "nhie"){
@@ -1300,8 +1671,14 @@
       if(!client.roomId) return;
 
       await RoomAPI.patchRoom(client.roomId, (doc) => {
-        const q = doc.questions || {nhie:[], pick:[]};
-        const len = doc.mode === "nhie" ? (q.nhie||[]).length : (q.pick||[]).length;
+        if(doc.mode === "td"){
+          doc.td = tdInit();
+          doc.chat = [];
+          return doc;
+        }
+
+        const q = getQ(doc);
+        const len = doc.mode === "nhie" ? q.nhie.length : q.pick.length;
 
         doc.shuffle = doc.shuffle || { nhie:true, pick:true };
         const doShuffle = doc.mode === "nhie" ? doc.shuffle.nhie : doc.shuffle.pick;
@@ -1318,6 +1695,151 @@
         doc.state.pickAnswered = {p1:false,p2:false};
         doc.state.pickTurn = "p1";
 
+        return doc;
+      });
+    }
+
+    // ---------------------------
+    // Truth/Dare actions (SOLID guards)
+    // Performer spins, chooser selects
+    // ---------------------------
+    function tdPool(doc){
+      const q = getQ(doc);
+      return {
+        truth: q.truth,
+        dare: q.dare
+      };
+    }
+
+    async function tdSpin(){
+      if(!client.roomId) return;
+      await RoomAPI.patchRoom(client.roomId, (doc) => {
+        if(doc.status !== "playing") return doc;
+        if(doc.mode !== "td") return doc;
+
+        doc.td = doc.td || tdInit();
+        const performer = doc.td.turn || "p1";
+        const chooser = otherRole(performer);
+
+        // ✅ guard: only performer can spin, only in spin phase
+        if(doc.td.phase !== "spin") return doc;
+        if(client.role !== performer) return doc;
+
+        const r = Math.random() < 0.5 ? "truth" : "dare";
+        const pool = tdPool(doc)[r] || [];
+        const pick = pickSampleIndices(pool.length, 10);
+        const sample = pick.map(i => pool[i]);
+
+        doc.td.type = r;
+        doc.td.sample = sample; // store text (stable on both devices)
+        doc.td.phase = "list";
+        doc.td.chosenText = "";
+        doc.td.chosenBy = null;
+        doc.td.chosenAt = null;
+
+        return doc;
+      });
+    }
+
+    async function tdShuffleSample(){
+      if(!client.roomId) return;
+      await RoomAPI.patchRoom(client.roomId, (doc) => {
+        if(doc.status !== "playing") return doc;
+        if(doc.mode !== "td") return doc;
+
+        doc.td = doc.td || tdInit();
+        const performer = doc.td.turn || "p1";
+        const chooser = otherRole(performer);
+
+        // ✅ guard: only chooser can shuffle, only in list
+        if(doc.td.phase !== "list") return doc;
+        if(client.role !== chooser) return doc;
+
+        const type = doc.td.type;
+        if(type !== "truth" && type !== "dare") return doc;
+
+        const pool = tdPool(doc)[type] || [];
+        const pick = pickSampleIndices(pool.length, 10);
+        doc.td.sample = pick.map(i => pool[i]);
+        return doc;
+      });
+    }
+
+    async function tdChoose(sampleIndex){
+      if(!client.roomId) return;
+      await RoomAPI.patchRoom(client.roomId, (doc) => {
+        if(doc.status !== "playing") return doc;
+        if(doc.mode !== "td") return doc;
+
+        doc.td = doc.td || tdInit();
+        const performer = doc.td.turn || "p1";
+        const chooser = otherRole(performer);
+
+        // ✅ guard: only chooser can pick, only in list
+        if(doc.td.phase !== "list") return doc;
+        if(client.role !== chooser) return doc;
+
+        const sample = Array.isArray(doc.td.sample) ? doc.td.sample : [];
+        const txt = sample[sampleIndex];
+        if(!txt) return doc;
+
+        doc.td.chosenText = txt;
+        doc.td.chosenBy = chooser;
+        doc.td.chosenAt = nowISO();
+        doc.td.phase = "chosen";
+
+        return doc;
+      });
+    }
+
+    async function tdNextSpin(){
+      if(!client.roomId) return;
+      await RoomAPI.patchRoom(client.roomId, (doc) => {
+        if(doc.status !== "playing") return doc;
+        if(doc.mode !== "td") return doc;
+
+        doc.td = doc.td || tdInit();
+        const performer = doc.td.turn || "p1";
+
+        // ✅ guard: only performer can proceed, only in chosen phase
+        if(doc.td.phase !== "chosen") return doc;
+        if(client.role !== performer) return doc;
+
+        doc.td.turn = otherRole(performer); // swap
+        doc.td.phase = "spin";
+        doc.td.type = null;
+        doc.td.sample = [];
+        doc.td.chosenText = "";
+        doc.td.chosenBy = null;
+        doc.td.chosenAt = null;
+
+        return doc;
+      });
+    }
+
+    async function chatSend(){
+      if(!client.roomId) return;
+      const text = (el("chatInput").value || "").trim();
+      if(!text) return;
+      el("chatInput").value = "";
+
+      await RoomAPI.patchRoom(client.roomId, (doc) => {
+        if(doc.status !== "playing") return doc;
+        doc.chat = Array.isArray(doc.chat) ? doc.chat : [];
+
+        const myName = client.role==="p1" ? (doc.players.p1.name||"P1") : (doc.players.p2.name||"P2");
+        const msg = {
+          id: `${Date.now()}_${Math.random().toString(16).slice(2)}`,
+          uid: client.uid,
+          role: client.role,
+          name: myName,
+          text: text.slice(0, 220),
+          ts: nowISO()
+        };
+
+        doc.chat.push(msg);
+        // keep last 40
+        if(doc.chat.length > 40) doc.chat = doc.chat.slice(-40);
         return doc;
       });
     }
@@ -1348,6 +1870,24 @@
           </div>
         `).join("")
         : `<div class="tiny">No Pick One questions.</div>`;
+
+      el("truthList").innerHTML = questions.truth.length
+        ? questions.truth.map((t,i)=>`
+          <div class="listItem">
+            <div>${escapeHtml(t)}</div>
+            <button class="del" data-del-truth="${i}">Delete</button>
+          </div>
+        `).join("")
+        : `<div class="tiny">No Truth questions.</div>`;
+
+      el("dareList").innerHTML = questions.dare.length
+        ? questions.dare.map((t,i)=>`
+          <div class="listItem">
+            <div>${escapeHtml(t)}</div>
+            <button class="del" data-del-dare="${i}">Delete</button>
+          </div>
+        `).join("")
+        : `<div class="tiny">No Dare questions.</div>`;
     }
 
     function openSheet(){
@@ -1357,7 +1897,6 @@
       el("adminPanel").style.display = unlocked ? "block" : "none";
       if(unlocked){
         renderLists();
-        // ✅ set toggles UI from settings
         if(el("shuffleNhie")) el("shuffleNhie").checked = settings.shuffleNhie;
         if(el("shufflePick")) el("shufflePick").checked = settings.shufflePick;
       }
@@ -1389,6 +1928,7 @@
 
     el("tabNhie").addEventListener("click", ()=> setMode("nhie"));
     el("tabPick").addEventListener("click", ()=> setMode("pick"));
+    el("tabTD").addEventListener("click", ()=> setMode("td"));
 
     el("nhieHave").addEventListener("click", ()=> nhieSelect("I Have"));
     el("nhieNever").addEventListener("click", ()=> nhieSelect("I Never"));
@@ -1419,7 +1959,6 @@
       }
     });
 
-    // ✅ Shuffle toggles -> save locally
     el("shuffleNhie")?.addEventListener("change", () => {
       settings.shuffleNhie = !!el("shuffleNhie").checked;
       saveSettings();
@@ -1459,9 +1998,38 @@
       saveQuestions(); renderLists();
     });
 
+    // Truth/Dare manage
+    el("addTruth").addEventListener("click", ()=>{
+      const v = (el("truthNew").value || "").trim();
+      if(!v) return;
+      questions.truth.unshift(v);
+      el("truthNew").value="";
+      saveQuestions(); renderLists();
+    });
+    el("clearTruth").addEventListener("click", ()=>{
+      if(!confirm("Clear all Truth questions?")) return;
+      questions.truth = [];
+      saveQuestions(); renderLists();
+    });
+
+    el("addDare").addEventListener("click", ()=>{
+      const v = (el("dareNew").value || "").trim();
+      if(!v) return;
+      questions.dare.unshift(v);
+      el("dareNew").value="";
+      saveQuestions(); renderLists();
+    });
+    el("clearDare").addEventListener("click", ()=>{
+      if(!confirm("Clear all Dare questions?")) return;
+      questions.dare = [];
+      saveQuestions(); renderLists();
+    });
+
     el("loadSample").addEventListener("click", ()=>{
       questions.nhie = deepClone(SAMPLE_Q.nhie);
       questions.pick = deepClone(SAMPLE_Q.pick);
+      questions.truth = deepClone(SAMPLE_Q.truth);
+      questions.dare = deepClone(SAMPLE_Q.dare);
       saveQuestions(); renderLists();
       alert("Sample loaded ✅");
     });
@@ -1477,6 +2045,9 @@
     el("overlay").addEventListener("click", (e)=>{
       const dn = e.target?.getAttribute?.("data-del-nhie");
       const dp = e.target?.getAttribute?.("data-del-pick");
+      const dt = e.target?.getAttribute?.("data-del-truth");
+      const dd = e.target?.getAttribute?.("data-del-dare");
+
       if(dn != null){
         questions.nhie.splice(Number(dn),1);
         saveQuestions(); renderLists();
@@ -1484,6 +2055,33 @@
       if(dp != null){
         questions.pick.splice(Number(dp),1);
         saveQuestions(); renderLists();
+      }
+      if(dt != null){
+        questions.truth.splice(Number(dt),1);
+        saveQuestions(); renderLists();
+      }
+      if(dd != null){
+        questions.dare.splice(Number(dd),1);
+        saveQuestions(); renderLists();
+      }
+    });
+
+    // TD + Chat events
+    el("tdSpinBtn").addEventListener("click", tdSpin);
+    el("tdShuffleBtn").addEventListener("click", tdShuffleSample);
+    el("tdNextBtn").addEventListener("click", tdNextSpin);
+
+    el("tdCards").addEventListener("click", (e)=>{
+      const i = e.target?.getAttribute?.("data-tdpick");
+      if(i == null) return;
+      tdChoose(Number(i));
+    });
+
+    el("chatSendBtn").addEventListener("click", chatSend);
+    el("chatInput").addEventListener("keydown", (e)=>{
+      if(e.key === "Enter"){
+        e.preventDefault();
+        chatSend();
       }
     });
 
@@ -1500,7 +2098,7 @@
 
     async function boot(){
       loadQuestions();
-      loadSettings(); // ✅ load shuffle settings
+      loadSettings();
       setScreen("screenHome");
 
       const url = new URL(window.location.href);
