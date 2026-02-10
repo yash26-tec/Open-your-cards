@@ -322,21 +322,28 @@
     }
     .wheelStage{
       position:relative;
-      width:240px;
-      height:240px;
+      width:260px;
+      height:260px;
       display:grid;
       place-items:center;
     }
     .wheel{
-      width:240px;height:240px;border-radius:50%;
+      width:260px;height:260px;border-radius:50%;
       border:1px solid rgba(219,39,119,.25);
       box-shadow:
         0 22px 50px rgba(219,39,119,.18),
         0 10px 22px rgba(15,23,42,.08);
+      /* ✅ More colorful, still matches theme */
       background:
         conic-gradient(from -90deg,
-          rgba(219,39,119,.95) 0 180deg,
-          rgba(239,68,68,.95) 180deg 360deg
+          #db2777 0 60deg,
+          #fb7185 60deg 120deg,
+          #f97316 120deg 150deg,
+          #ef4444 150deg 210deg,
+          #a855f7 210deg 260deg,
+          #22c55e 260deg 300deg,
+          #06b6d4 300deg 340deg,
+          #db2777 340deg 360deg
         );
       position:relative;
       transform:rotate(0deg);
@@ -387,40 +394,52 @@
       transform:rotate(10deg);
       font-size:22px;
     }
-    .wheelHub{
-      position:absolute;
-      width:74px;height:74px;border-radius:50%;
-      background:linear-gradient(180deg,#ffffff,#fff1f6);
-      border:1px solid rgba(219,39,119,.25);
-      box-shadow:0 14px 30px rgba(15,23,42,.12);
-      display:grid;place-items:center;
-    }
-    .wheelHub i{
-      display:block;
-      width:46px;height:46px;border-radius:50%;
-      background:linear-gradient(135deg,var(--blue),var(--blue2));
-      box-shadow:0 12px 26px rgba(219,39,119,.25);
-      position:relative;
-    }
+
     .wheelPointer{
       position:absolute;
-      top:-6px; left:50%;
+      top:-8px; left:50%;
       transform:translateX(-50%);
       width:0;height:0;
-      border-left:14px solid transparent;
-      border-right:14px solid transparent;
-      border-bottom:26px solid #ffffff;
+      border-left:16px solid transparent;
+      border-right:16px solid transparent;
+      border-bottom:30px solid #ffffff;
       filter:drop-shadow(0 10px 14px rgba(15,23,42,.18));
+      z-index:5;
     }
     .wheelPointer::after{
       content:"";
       position:absolute;
-      left:-10px; top:6px;
-      width:20px;height:20px;border-radius:50%;
+      left:-11px; top:7px;
+      width:22px;height:22px;border-radius:50%;
       background:linear-gradient(135deg,var(--blue),var(--blue2));
       border:2px solid #fff;
       box-shadow:0 10px 18px rgba(219,39,119,.22);
     }
+
+    /* ✅ Center SPIN button */
+    .wheelHub{
+      position:absolute;
+      width:86px;height:86px;border-radius:50%;
+      background:linear-gradient(180deg,#ffffff,#fff1f6);
+      border:1px solid rgba(219,39,119,.25);
+      box-shadow:0 14px 30px rgba(15,23,42,.12);
+      display:grid;place-items:center;
+      z-index:6;
+    }
+    .spinBtnCenter{
+      width:72px;height:72px;border-radius:50%;
+      border:0;
+      cursor:pointer;
+      font-weight:1100;
+      letter-spacing:.6px;
+      color:#fff;
+      background:linear-gradient(135deg,var(--blue),var(--blue2));
+      box-shadow:0 14px 28px rgba(219,39,119,.24);
+      display:grid; place-items:center;
+      user-select:none;
+    }
+    .spinBtnCenter:active{transform:scale(.98)}
+    .spinBtnCenter:disabled{opacity:.45; cursor:not-allowed; transform:none}
 
     .tdBadge{
       display:inline-flex;
@@ -701,7 +720,6 @@
               <span class="pill" id="tdPhasePill">Phase: —</span>
             </div>
             <div class="row" style="gap:8px">
-              <button class="btn selected" id="tdSpinBtn">🎡 Spin</button>
               <button class="btn" id="tdShuffleBtn">🔀 Shuffle</button>
               <button class="btn ghost" id="tdNextBtn">Next Spin</button>
             </div>
@@ -710,17 +728,21 @@
           <!-- ✅ Big TRUTH/DARE result badge (separate, prominent) -->
           <div class="tdBadge big" id="tdResultBadge">—</div>
 
-          <!-- ✅ Attractive wheel -->
+          <!-- ✅ Wheel with CENTER SPIN BUTTON -->
           <div class="wheelWrap">
             <div class="wheelStage">
               <div class="wheelPointer" aria-hidden="true"></div>
+
               <div class="wheel" id="wheel">
                 <div class="wheelLabel" aria-hidden="true">
                   <div class="truth">TRUTH</div>
                   <div class="dare">DARE</div>
                 </div>
               </div>
-              <div class="wheelHub" aria-hidden="true"><i></i></div>
+
+              <div class="wheelHub" aria-hidden="true">
+                <button class="spinBtnCenter" id="tdSpinCenter" type="button">SPIN</button>
+              </div>
             </div>
             <div class="tiny" id="tdHint">—</div>
           </div>
@@ -1033,15 +1055,15 @@
     // ---------------------------
     function tdInit(){
       return {
-        turn: "p1",           // turn owner (spins + later next)
+        turn: "p1",
         phase: "spin",        // spin | list | chosen
         type: null,           // truth | dare
-        spinDeg: 0,           // ✅ wheel rotation degrees (stored)
-        spinToken: null,      // ✅ changes each spin (for animation sync)
-        sample: [],           // store text
+        spinDeg: 0,           // wheel rotation degrees (stored)
+        spinToken: null,      // changes each spin (for animation sync)
+        sample: [],
         chosenText: "",
         chosenAt: null,
-        chosenBy: null        // p1/p2 (who selected from cards)
+        chosenBy: null
       };
     }
 
@@ -1049,19 +1071,19 @@
       const sh = shuffleCfg || { nhie:true, pick:true };
       return {
         roomId,
-        status: "waiting", // waiting | playing
+        status: "waiting",
         hostUid,
         players: {
           p1: { uid: hostUid, name: hostName },
           p2: { uid: "", name: "" }
         },
-        mode: "nhie", // nhie | pick | td
-        shuffle: sh, // ✅ store shuffle prefs in room
+        mode: "nhie",
+        shuffle: sh,
         idx: 0,
         order: buildOrder((q?.nhie||[]).length, sh.nhie),
         questions: q || {nhie:[], pick:[], truth:[], dare:[]},
         td: tdInit(),
-        chat: [], // last 40
+        chat: [],
         state: {
           counts: {p1:0,p2:0},
           last: {p1:"—",p2:"—"},
@@ -1441,8 +1463,28 @@
       wrap.scrollTop = wrap.scrollHeight;
     }
 
-    // ✅ wheel animation guard (local only)
+    // ✅ wheel animation sync: force transition to trigger on BOTH devices
     let lastSpinTokenLocal = null;
+    let wheelLastDegLocal = 0;
+
+    function animateWheelTo(deg){
+      const wheel = el("wheel");
+      if(!wheel) return;
+
+      // normalize current display degree to keep smooth transitions
+      const current = Number(wheelLastDegLocal || 0);
+      wheelLastDegLocal = Number(deg || 0);
+
+      // ensure animation always triggers (even if element just appeared)
+      wheel.style.transition = "none";
+      wheel.style.transform = `rotate(${current}deg)`;
+      // force reflow
+      wheel.getBoundingClientRect();
+      requestAnimationFrame(() => {
+        wheel.style.transition = "transform 2.5s cubic-bezier(.12,.85,.22,1)";
+        wheel.style.transform = `rotate(${wheelLastDegLocal}deg)`;
+      });
+    }
 
     function setBadge(type){
       const b = el("tdResultBadge");
@@ -1459,7 +1501,6 @@
     }
 
     function updateTDUI(room){
-      const q = getQ(room);
       room.td = room.td || tdInit();
 
       const turn = room.td.turn || "p1";
@@ -1468,40 +1509,38 @@
       setText("tdPhasePill", `Phase: ${room.td.phase || "spin"}`);
 
       const phase = room.td.phase || "spin";
-      const type = room.td.type; // truth/dare
+      const type = room.td.type;
       setBadge(type);
 
-      // Buttons guards:
-      // - Spin: only turn player, only in spin phase
-      // - Shuffle + select: other player, only in list phase
-      // - Next Spin: only turn player, only in chosen phase
       const other = otherRole(turn);
 
       const canSpin = (phase === "spin") && (client.role === turn);
       const canShuffle = (phase === "list") && (client.role === other);
       const canNext = (phase === "chosen") && (client.role === turn);
 
-      el("tdSpinBtn").disabled = !canSpin;
+      el("tdSpinCenter").disabled = !canSpin;
       el("tdShuffleBtn").disabled = !canShuffle;
       el("tdNextBtn").disabled = !canNext;
 
       // Wheel rotate (sync via td.spinDeg + td.spinToken)
-      const wheel = el("wheel");
       const token = room.td.spinToken || null;
       const deg = Number(room.td.spinDeg || 0);
 
+      // When token changes: animate ONCE (both players)
       if(token && token !== lastSpinTokenLocal){
         lastSpinTokenLocal = token;
-        // animate to stored deg
-        wheel.style.transform = `rotate(${deg}deg)`;
+        animateWheelTo(deg);
       }else if(!token){
-        // no spin yet: reset visual to 0
-        wheel.style.transform = `rotate(0deg)`;
-      }else{
-        // same token: keep as is (avoid re-animating on every render)
+        // reset
+        lastSpinTokenLocal = null;
+        wheelLastDegLocal = 0;
+        const wheel = el("wheel");
+        if(wheel){
+          wheel.style.transition = "none";
+          wheel.style.transform = "rotate(0deg)";
+        }
       }
 
-      // Main text + hint (no "performer/chooser", no "must do" line)
       if(phase === "spin"){
         setText("qText", "🎡 Spin the wheel");
         setText("qMeta", `Truth/Dare • ${turnName} spins`);
@@ -1585,7 +1624,6 @@
 
       setModeUI(room);
 
-      // NHIE/PICK render
       const q = getQ(room);
       const item = getCurrentItem(room);
 
@@ -1876,19 +1914,25 @@
 
     // ---------------------------
     // Truth/Dare actions (Wheel-based)
-    // Turn player spins. Other player selects.
+    // ✅ FIXES:
+    // 1) wheel spin animation sync on BOTH devices (spinDeg + spinToken + forced transition)
+    // 2) DARE frequency: ~1 out of 10 spins (10%)
+    // 3) Center SPIN button
     // ---------------------------
     function tdPool(doc){
       const q = getQ(doc);
       return { truth: q.truth, dare: q.dare };
     }
 
-    function typeFromDeg(deg){
-      const d = ((Number(deg)||0) % 360 + 360) % 360;
-      // pointer is fixed on top, wheel rotated clockwise by deg
-      // pointer sees wheel angle = (360 - d) % 360
-      const pointerAngle = (360 - d) % 360;
-      return pointerAngle < 180 ? "truth" : "dare";
+    // pointerAngle = (360 - degMod) % 360
+    // Truth if pointerAngle < 180, Dare otherwise
+    function degForType(type){
+      const pointerAngle =
+        type === "truth"
+          ? Math.floor(Math.random()*180)            // 0..179
+          : 180 + Math.floor(Math.random()*180);     // 180..359
+      const degMod = (360 - pointerAngle) % 360;
+      return degMod;
     }
 
     async function tdSpin(){
@@ -1899,17 +1943,17 @@
 
         doc.td = doc.td || tdInit();
         const turn = doc.td.turn || "p1";
-        const other = otherRole(turn);
-
         if(doc.td.phase !== "spin") return doc;
         if(client.role !== turn) return doc;
 
-        // ✅ make a nice long spin + random stop, store degrees so both devices match
-        const base = 360 * (6 + Math.floor(Math.random()*3));   // 6-8 rounds
-        const stop = Math.floor(Math.random()*360);             // final stop
+        // ✅ Weighted: DARE ~10% (1 in 10)
+        const type = (Math.random() < 0.10) ? "dare" : "truth";
+
+        // ✅ make a nice long spin + stop that lands on chosen type
+        const base = 360 * (6 + Math.floor(Math.random()*3)); // 6-8 rounds
+        const stop = degForType(type);                         // 0..359 (but mapped to type)
         const deg = base + stop;
 
-        const type = typeFromDeg(deg);
         const pool = tdPool(doc)[type] || [];
         const pick = pickSampleIndices(pool.length, 10);
         const sample = pick.map(i => pool[i]);
@@ -1995,7 +2039,7 @@
         doc.td.chosenText = "";
         doc.td.chosenBy = null;
         doc.td.chosenAt = null;
-        // keep wheel as last result visually (looks cool), token stays same
+        // keep wheel as last result visually (cool)
         return doc;
       });
     }
@@ -2180,7 +2224,6 @@
       saveQuestions(); renderLists();
     });
 
-    // Truth/Dare manage
     el("addTruth").addEventListener("click", ()=>{
       const v = (el("truthNew").value || "").trim();
       if(!v) return;
@@ -2249,7 +2292,7 @@
     });
 
     // TD + Chat events
-    el("tdSpinBtn").addEventListener("click", tdSpin);
+    el("tdSpinCenter").addEventListener("click", tdSpin);
     el("tdShuffleBtn").addEventListener("click", tdShuffleSample);
     el("tdNextBtn").addEventListener("click", tdNextSpin);
 
