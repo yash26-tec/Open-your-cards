@@ -325,7 +325,11 @@
       pointer-events:none;
     }
 
-    /* ✅ More attractive + colorful wheel */
+    /* =========================
+       ✅ NEW: 8-slice wheel + center SPIN button (image jaisa)
+       - Visual: 8 colorful slices, 1 slice "DARE"
+       - Logic: DARE probability EXACT ~10%
+       ========================= */
     .wheelWrap{
       display:grid;
       place-items:center;
@@ -334,129 +338,155 @@
     }
     .wheelStage{
       position:relative;
-      width:252px;
-      height:252px;
+      width:264px;
+      height:264px;
       display:grid;
       place-items:center;
     }
     .wheelGlow{
-      position:absolute; inset:-10px;
+      position:absolute; inset:-12px;
       border-radius:50%;
-      background:radial-gradient(closest-side, rgba(255,255,255,.40), transparent 55%);
+      background:radial-gradient(closest-side, rgba(255,255,255,.55), transparent 60%);
       filter:blur(2px);
-      opacity:.7;
+      opacity:.85;
       pointer-events:none;
     }
+
+    .wheelPointer{
+      position:absolute;
+      top:-12px; left:50%;
+      transform:translateX(-50%);
+      width:0;height:0;
+      border-left:16px solid transparent;
+      border-right:16px solid transparent;
+      border-bottom:34px solid #ffffff;
+      filter:drop-shadow(0 12px 16px rgba(15,23,42,.20));
+      z-index:6;
+    }
+    .wheelPointer::after{
+      content:"";
+      position:absolute;
+      left:-12px; top:8px;
+      width:24px;height:24px;border-radius:50%;
+      background:linear-gradient(135deg,var(--blue),var(--blue2));
+      border:2px solid #fff;
+      box-shadow:0 10px 18px rgba(219,39,119,.22);
+    }
+
     .wheel{
       width:252px;height:252px;border-radius:50%;
-      border:1px solid rgba(219,39,119,.25);
+      /* image jaisa: white ring + thin stroke */
+      border:10px solid #fff;
+      outline:2px solid rgba(15,23,42,.12);
       box-shadow:
-        0 26px 60px rgba(219,39,119,.20),
-        0 12px 26px rgba(15,23,42,.10);
-      /* two outcomes, but more colorful texture */
+        0 26px 60px rgba(15,23,42,.12),
+        0 16px 36px rgba(219,39,119,.16);
       background:
-        radial-gradient(120px 120px at 30% 25%, rgba(255,255,255,.40), transparent 55%),
-        radial-gradient(170px 140px at 70% 75%, rgba(255,255,255,.22), transparent 60%),
         conic-gradient(from -90deg,
-          /* TRUTH half (0-180) multi-tones */
-          #ec4899 0deg,
-          #a855f7 40deg,
-          #3b82f6 90deg,
-          #22c55e 140deg,
-          #ec4899 180deg,
-          /* DARE half (180-360) multi-tones */
-          #ef4444 180deg,
-          #f59e0b 230deg,
-          #10b981 280deg,
-          #06b6d4 330deg,
-          #ef4444 360deg
+          /* 8 slices (colors) */
+          #22c55e 0deg 45deg,
+          #f59e0b 45deg 90deg,
+          #ef4444 90deg 135deg,
+          #ec4899 135deg 180deg,
+          #a855f7 180deg 225deg,
+          #3b82f6 225deg 270deg,
+          #06b6d4 270deg 315deg,
+          #10b981 315deg 360deg
         );
       position:relative;
       transform:rotate(0deg);
       transition:transform 2.6s cubic-bezier(.12,.85,.22,1);
       overflow:hidden;
+      z-index:2;
     }
-    /* subtle sparkle stripes */
+    /* subtle slice separators + shine */
     .wheel::before{
       content:"";
       position:absolute; inset:0;
       border-radius:50%;
       background:
         repeating-conic-gradient(from -90deg,
-          rgba(255,255,255,.10) 0deg 10deg,
-          rgba(255,255,255,0) 10deg 22deg
-        );
+          rgba(255,255,255,.55) 0deg 1.2deg,
+          rgba(255,255,255,0) 1.2deg 45deg
+        ),
+        radial-gradient(130px 110px at 30% 25%, rgba(255,255,255,.35), transparent 60%),
+        radial-gradient(160px 130px at 70% 75%, rgba(255,255,255,.22), transparent 65%);
       mix-blend-mode:overlay;
-      opacity:.55;
       pointer-events:none;
     }
     .wheel::after{
       content:"";
-      position:absolute; inset:10px;
+      position:absolute; inset:12px;
       border-radius:50%;
       background:
         radial-gradient(closest-side, rgba(255,255,255,.25), transparent 62%),
         radial-gradient(closest-side, rgba(0,0,0,.06), transparent 70%);
       pointer-events:none;
     }
-    .wheelLabel{
+
+    /* Labels on slices (JS injects 8 items) */
+    .wheelText{
       position:absolute;
-      width:100%;
-      height:100%;
+      inset:0;
+      pointer-events:none;
+      z-index:3;
+    }
+    .wheelText .lbl{
+      position:absolute;
+      left:50%;
+      top:50%;
+      width:120px;
+      transform-origin:0 0;
+      font-weight:1000;
+      letter-spacing:.8px;
+      text-transform:uppercase;
+      font-size:12px;
+      color:#fff;
+      text-shadow:0 10px 26px rgba(15,23,42,.32);
+      display:flex;
+      justify-content:flex-start;
+      align-items:center;
+      gap:6px;
+    }
+    .wheelText .lbl span{
+      display:inline-block;
+      padding:6px 10px;
+      border-radius:999px;
+      background:rgba(255,255,255,.18);
+      border:1px solid rgba(255,255,255,.22);
+      backdrop-filter: blur(6px);
+    }
+    .wheelText .lbl.dare span{
+      background:rgba(0,0,0,.18);
+      border:1px solid rgba(0,0,0,.18);
+    }
+
+    /* Center SPIN button (clickable) */
+    .wheelSpinBtn{
+      position:absolute;
+      width:92px;height:92px;border-radius:50%;
+      border:10px solid #fff;
+      outline:2px solid rgba(15,23,42,.12);
+      background:linear-gradient(135deg,var(--blue),var(--blue2));
+      color:#fff;
+      font-weight:1000;
+      letter-spacing:1px;
+      box-shadow:0 18px 40px rgba(15,23,42,.16), 0 14px 30px rgba(219,39,119,.18);
+      cursor:pointer;
+      z-index:7;
       display:grid;
       place-items:center;
-      pointer-events:none;
-      font-weight:1000;
-      letter-spacing:.6px;
-      text-transform:uppercase;
-      color:#fff;
-      text-shadow:0 10px 26px rgba(15,23,42,.28);
+      user-select:none;
     }
-    .wheelLabel .truth{
-      position:absolute;
-      top:20%;
-      transform:rotate(-10deg);
-      font-size:22px;
-    }
-    .wheelLabel .dare{
-      position:absolute;
-      bottom:20%;
-      transform:rotate(10deg);
-      font-size:22px;
-    }
-    .wheelHub{
-      position:absolute;
-      width:80px;height:80px;border-radius:50%;
-      background:linear-gradient(180deg,#ffffff,#fff1f6);
-      border:1px solid rgba(219,39,119,.25);
-      box-shadow:0 16px 34px rgba(15,23,42,.14);
-      display:grid;place-items:center;
-    }
-    .wheelHub i{
+    .wheelSpinBtn:active{transform:scale(.99)}
+    .wheelSpinBtn:disabled{opacity:.55; cursor:not-allowed; transform:none}
+    .wheelSpinBtn small{
       display:block;
-      width:50px;height:50px;border-radius:50%;
-      background:conic-gradient(from 180deg, #3b82f6, #a855f7, #ec4899, #ef4444, #f59e0b, #10b981, #3b82f6);
-      box-shadow:0 12px 26px rgba(219,39,119,.20);
-      position:relative;
-    }
-    .wheelPointer{
-      position:absolute;
-      top:-10px; left:50%;
-      transform:translateX(-50%);
-      width:0;height:0;
-      border-left:15px solid transparent;
-      border-right:15px solid transparent;
-      border-bottom:30px solid #ffffff;
-      filter:drop-shadow(0 10px 14px rgba(15,23,42,.18));
-    }
-    .wheelPointer::after{
-      content:"";
-      position:absolute;
-      left:-11px; top:7px;
-      width:22px;height:22px;border-radius:50%;
-      background:linear-gradient(135deg,var(--blue),var(--blue2));
-      border:2px solid #fff;
-      box-shadow:0 10px 18px rgba(219,39,119,.22);
+      font-size:10px;
+      opacity:.9;
+      letter-spacing:.6px;
+      margin-top:2px;
+      font-weight:900;
     }
 
     .tdBadge{
@@ -758,6 +788,7 @@
               <span class="pill" id="tdPhasePill">Phase: —</span>
             </div>
             <div class="row" style="gap:8px">
+              <!-- keep buttons (not breaking old flow) -->
               <button class="btn selected" id="tdSpinBtn">🎡 Spin</button>
               <button class="btn" id="tdShuffleBtn">🔀 Shuffle</button>
               <button class="btn ghost" id="tdNextBtn">Next Spin</button>
@@ -767,26 +798,29 @@
           <!-- ✅ Big TRUTH/DARE result badge -->
           <div class="tdBadge big" id="tdResultBadge">—</div>
 
-          <!-- ✅ Colorful wheel -->
+          <!-- ✅ NEW Wheel -->
           <div class="wheelWrap">
             <div class="wheelStage">
               <div class="wheelGlow" aria-hidden="true"></div>
               <div class="wheelPointer" aria-hidden="true"></div>
+
               <div class="wheel" id="wheel">
-                <div class="wheelLabel" aria-hidden="true">
-                  <div class="truth">TRUTH</div>
-                  <div class="dare">DARE</div>
-                </div>
+                <div class="wheelText" id="wheelText" aria-hidden="true"></div>
               </div>
-              <div class="wheelHub" aria-hidden="true"><i></i></div>
+
+              <!-- ✅ center SPIN button -->
+              <button class="wheelSpinBtn" id="wheelSpinBtn">
+                SPIN
+                <small>tap</small>
+              </button>
             </div>
             <div class="tiny" id="tdHint">—</div>
           </div>
 
-          <!-- ✅ Cards (always visible after spin; selected one BLUE for both) -->
+          <!-- ✅ Cards -->
           <div class="cardsGrid" id="tdCards"></div>
 
-          <!-- ✅ Selected question: wheel ke niche, chat se just upar -->
+          <!-- ✅ Selected question -->
           <div class="tdChosenBox" id="tdChosenBox">
             <div class="tdChosenTop">
               <div class="tdChosenTitle">✅ Selected</div>
@@ -1543,6 +1577,31 @@
       }
     }
 
+    // ---------------------------
+    // ✅ Wheel labels (8 slices) + 1 DARE slice (visual)
+    // ---------------------------
+    const WHEEL_SLICE_COUNT = 8;
+    const WHEEL_DARE_INDEX = 2; // (0-7) ek slice "DARE" (visual). Probability still 10% via logic.
+    function renderWheelLabels(){
+      const wrap = el("wheelText");
+      if(!wrap) return;
+      const seg = 360 / WHEEL_SLICE_COUNT;
+      // Put label near outer area
+      wrap.innerHTML = Array.from({length: WHEEL_SLICE_COUNT}, (_,i)=>{
+        const isDare = i === WHEEL_DARE_INDEX;
+        const label = isDare ? "DARE" : "TRUTH";
+        // Rotate label to slice center, then translate outward
+        const angle = (-90 + i*seg + seg/2);
+        // We rotate around center; translate out to rim (~92px)
+        const cls = "lbl" + (isDare ? " dare" : "");
+        return `
+          <div class="${cls}" style="transform: translate(-50%,-50%) rotate(${angle}deg) translate(78px) rotate(${90}deg);">
+            <span>${label}</span>
+          </div>
+        `;
+      }).join("");
+    }
+
     function updateTDUI(room){
       room.td = room.td || tdInit();
 
@@ -1562,6 +1621,7 @@
       const canNext = (phase === "chosen") && (client.role === turn);
 
       el("tdSpinBtn").disabled = !canSpin;
+      el("wheelSpinBtn").disabled = !canSpin; // ✅ center button sync
       el("tdShuffleBtn").disabled = !canShuffle;
       el("tdNextBtn").disabled = !canNext;
 
@@ -1577,7 +1637,6 @@
         wheel.style.transform = `rotate(0deg)`;
       }
 
-      // ✅ Main top box: keep simple for TD (chosen question now below wheel)
       if(phase === "spin"){
         setText("qText", "Truth / Dare");
         setText("qMeta", `${turnName} spins • other player selects`);
@@ -1593,7 +1652,7 @@
         setText("tdHint", `Done? Turn player "Next Spin" dabaye.`);
       }
 
-      // Cards list (show for BOTH; selected highlight BLUE in chosen phase too)
+      // Cards list
       const cardsWrap = el("tdCards");
       const sample = Array.isArray(room.td.sample) ? room.td.sample : [];
       const chosenIndex = (room.td.chosenIndex ?? null);
@@ -1617,9 +1676,7 @@
         }
       }
 
-      // Selected question box (wheel ke niche, chat se just upar)
       showChosenBox(room);
-
       renderChat(room);
       setProgress(room);
     }
@@ -1957,10 +2014,27 @@
       return { truth: q.truth, dare: q.dare };
     }
 
-    function typeFromDeg(deg){
-      const d = ((Number(deg)||0) % 360 + 360) % 360;
-      const pointerAngle = (360 - d) % 360;
-      return pointerAngle < 180 ? "truth" : "dare";
+    // ✅ Weighted (DARE ~10%) + land on correct labeled slice
+    function pickWheelTargetIndex(type){
+      const idx = [];
+      for(let i=0;i<WHEEL_SLICE_COUNT;i++){
+        const isDare = i === WHEEL_DARE_INDEX;
+        if(type === "dare" && isDare) idx.push(i);
+        if(type === "truth" && !isDare) idx.push(i);
+      }
+      return idx[Math.floor(Math.random()*idx.length)];
+    }
+
+    function computeStopDegForIndex(index){
+      const seg = 360 / WHEEL_SLICE_COUNT;
+      // We want chosen slice CENTER to align to pointer (top).
+      // With conic-gradient(from -90deg), slice i center = i*seg + seg/2.
+      // Rotation needed (clockwise) = 360 - (i*seg + seg/2 + jitter)
+      const jitterMax = (seg/2) - 4; // leave margin from borders
+      const jitter = (Math.random() * (jitterMax*2)) - jitterMax;
+      const centerAngle = (index * seg) + (seg/2) + jitter;
+      const stop = (360 - centerAngle) % 360;
+      return stop < 0 ? stop + 360 : stop;
     }
 
     async function tdSpin(){
@@ -1975,11 +2049,17 @@
         if(doc.td.phase !== "spin") return doc;
         if(client.role !== turn) return doc;
 
-        const base = 360 * (6 + Math.floor(Math.random()*3)); // 6-8 rounds
-        const stop = Math.floor(Math.random()*360);
-        const deg = base + stop;
+        // ✅ EXACT ~10% dare
+        const type = (Math.random() < 0.10) ? "dare" : "truth";
 
-        const type = typeFromDeg(deg);
+        // choose visual target slice index that matches label
+        const targetIndex = pickWheelTargetIndex(type);
+
+        // spin amount
+        const spins = 6 + Math.floor(Math.random()*3); // 6-8
+        const stop = computeStopDegForIndex(targetIndex);
+        const deg = spins*360 + stop;
+
         const pool = tdPool(doc)[type] || [];
         const pick = pickSampleIndices(pool.length, 10);
         const sample = pick.map(i => pool[i]);
@@ -2322,6 +2402,7 @@
 
     // TD + Chat events
     el("tdSpinBtn").addEventListener("click", tdSpin);
+    el("wheelSpinBtn").addEventListener("click", tdSpin); // ✅ center spin
     el("tdShuffleBtn").addEventListener("click", tdShuffleSample);
     el("tdNextBtn").addEventListener("click", tdNextSpin);
 
@@ -2354,6 +2435,9 @@
       loadQuestions();
       loadSettings();
       setScreen("screenHome");
+
+      // ✅ wheel labels once
+      renderWheelLabels();
 
       const url = new URL(window.location.href);
       const roomFromUrl = cleanRoomId(url.searchParams.get("room") || "");
