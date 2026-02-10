@@ -3,12 +3,17 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>2P Party Game (Supabase Rooms) — FINAL (id PK)</title>
+  <title>2P Party Game (Supabase Rooms) — FINAL (Pink/Red + Shuffle)</title>
   <style>
     :root{
-      --bg:#f5f9ff; --card:#ffffff; --stroke:#dbe7ff;
-      --blue:#1d4ed8; --blue2:#2563eb;
-      --txt:#0f172a; --muted:#64748b;
+      /* ✅ Pinkish-Red Theme */
+      --bg:#fff1f6;            /* pink-50 */
+      --card:#ffffff;
+      --stroke:#ffd1e1;        /* soft pink stroke */
+      --blue:#db2777;          /* pink-600 */
+      --blue2:#ef4444;         /* red-500 */
+      --txt:#0f172a;
+      --muted:#6b7280;
       --shadow: 0 10px 26px rgba(15,23,42,.08);
       --r:18px;
     }
@@ -16,8 +21,8 @@
     body{
       margin:0; min-height:100dvh;
       background:
-        radial-gradient(1100px 520px at 50% -25%, rgba(37,99,235,.22), transparent 55%),
-        radial-gradient(700px 380px at 0% 0%, rgba(29,78,216,.10), transparent 60%),
+        radial-gradient(1100px 520px at 50% -25%, rgba(219,39,119,.22), transparent 55%),
+        radial-gradient(700px 380px at 0% 0%, rgba(239,68,68,.12), transparent 60%),
         linear-gradient(180deg,var(--bg),#fff);
       color:var(--txt);
       display:flex; justify-content:center; align-items:flex-start;
@@ -38,7 +43,7 @@
 
     .seg{
       display:flex;gap:8px;margin-top:10px;
-      background:linear-gradient(180deg,#eef6ff,#f7fbff);
+      background:linear-gradient(180deg,#ffe4ee,#fff5f8);
       padding:6px;border-radius:999px;border:1px solid var(--stroke)
     }
     .seg button{
@@ -47,7 +52,7 @@
     }
     .seg button.active{
       background:linear-gradient(135deg,var(--blue),var(--blue2));
-      color:#fff;box-shadow:0 10px 20px rgba(29,78,216,.22)
+      color:#fff;box-shadow:0 10px 20px rgba(219,39,119,.22)
     }
 
     .card{
@@ -61,8 +66,8 @@
     }
 
     .qBox{
-      border:1px dashed #c7d8ff;
-      background:linear-gradient(180deg,#f8fbff,#ffffff);
+      border:1px dashed #f7b3cf;
+      background:linear-gradient(180deg,#fff7fb,#ffffff);
       border-radius:16px;
       padding:14px;
       min-height:110px;
@@ -73,7 +78,7 @@
     .qMeta{font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}
 
     .prog{
-      height:8px;border-radius:999px;background:#eef4ff;border:1px solid var(--stroke);
+      height:8px;border-radius:999px;background:#ffe8f1;border:1px solid var(--stroke);
       overflow:hidden; flex:1; min-width:140px;
     }
     .prog > i{
@@ -81,7 +86,7 @@
       width:0%;
       background:linear-gradient(135deg,var(--blue),var(--blue2));
       border-radius:999px;
-      box-shadow:0 10px 22px rgba(29,78,216,.20);
+      box-shadow:0 10px 22px rgba(219,39,119,.20);
       transition:width .25s ease;
     }
 
@@ -89,7 +94,7 @@
 
     .btn{
       border:1px solid var(--stroke);
-      background:linear-gradient(180deg,#ffffff,#f8fbff);
+      background:linear-gradient(180deg,#ffffff,#fff7fb);
       color:var(--txt);
       border-radius:16px;
       padding:12px 12px;
@@ -116,10 +121,10 @@
     .btn.selected{
       background:linear-gradient(135deg,var(--blue),var(--blue2));
       color:#fff;border:0;
-      box-shadow:0 14px 30px rgba(29,78,216,.26);
+      box-shadow:0 14px 30px rgba(219,39,119,.26);
     }
     .btn.selected::after{opacity:.22}
-    .btn.ghost{background:linear-gradient(180deg,#f1f7ff,#ffffff)}
+    .btn.ghost{background:linear-gradient(180deg,#ffeaf2,#ffffff)}
     .btn.danger{
       background:linear-gradient(180deg,#fff5f7,#ffffff);
       border:1px solid #ffd2da;color:#b91c1c
@@ -127,9 +132,10 @@
 
     .pill{
       font-size:12px;padding:6px 10px;border-radius:999px;
-      border:1px solid rgba(29,78,216,.18);
-      background:rgba(29,78,216,.08);
-      color:#1e3a8a;font-weight:1000
+      border:1px solid rgba(219,39,119,.20);
+      background:rgba(219,39,119,.10);
+      color:#9d174d;
+      font-weight:1000
     }
 
     input{
@@ -171,12 +177,12 @@
     .sheetTitle{font-weight:1000}
     .xbtn{border:1px solid var(--stroke);background:#fff;border-radius:14px;padding:10px 12px;cursor:pointer;font-weight:1000}
     .hint{font-size:12px;color:var(--muted);margin:8px 0 10px;line-height:1.35}
-    .divider{height:1px;background:#eef2ff;margin:12px 0}
+    .divider{height:1px;background:#ffe3ef;margin:12px 0}
     .grid{display:grid;gap:10px}
     .miniRow{display:flex;gap:10px}
     .miniRow > *{flex:1}
-    .list{margin-top:10px;border:1px solid var(--stroke);border-radius:16px;padding:10px;background:#f8fbff}
-    .listItem{display:flex;justify-content:space-between;gap:10px;padding:10px;border-radius:14px;background:#fff;border:1px solid var(--stroke);margin-bottom:8px;font-size:13px}
+    .list{margin-top:10px;border:1px solid var(--stroke);border-radius:16px;padding:10px;background:#fff7fb}
+    .listItem{display:flex;justify-content:space-between;gap:10px;padding:10px;border-radius:14px;background:#fff;border:1px solid var(--stroke);margin-bottom:8px;font-size:13px;align-items:flex-start}
     .listItem:last-child{margin-bottom:0}
     .del{border:1px solid #ffd2da;background:#fff5f7;color:#b91c1c;border-radius:14px;padding:8px 10px;cursor:pointer;font-weight:1000;white-space:nowrap}
     .tiny{font-size:12px;color:var(--muted)}
@@ -187,7 +193,7 @@
       border:1px solid var(--stroke);
       border-radius:18px;
       padding:12px;
-      background:linear-gradient(180deg,#ffffff,#f8fbff);
+      background:linear-gradient(180deg,#ffffff,#fff7fb);
       box-shadow:0 10px 22px rgba(15,23,42,.06);
       position:relative;
       overflow:hidden;
@@ -198,13 +204,13 @@
     .scoreNum{font-size:32px;font-weight:1000;color:var(--blue);line-height:1}
     .scoreCard.active{
       transform:translateY(-1px);
-      box-shadow:0 16px 36px rgba(29,78,216,.14);
-      border-color:rgba(29,78,216,.35);
+      box-shadow:0 16px 36px rgba(219,39,119,.14);
+      border-color:rgba(219,39,119,.35);
     }
     .scoreCard.active::before{
       content:"";
       position:absolute; inset:0;
-      background:radial-gradient(280px 140px at 20% 0%, rgba(37,99,235,.18), transparent 60%);
+      background:radial-gradient(280px 140px at 20% 0%, rgba(219,39,119,.18), transparent 60%);
       pointer-events:none;
     }
 
@@ -213,7 +219,7 @@
       border:1px solid var(--stroke);
       border-radius:18px;
       padding:12px;
-      background:linear-gradient(180deg,#ffffff,#f8fbff);
+      background:linear-gradient(180deg,#ffffff,#fff7fb);
       box-shadow:0 8px 18px rgba(15,23,42,.05);
       display:grid; gap:8px;
     }
@@ -225,9 +231,9 @@
       font-weight:1000; color:var(--muted);
     }
     .selBadge.done{
-      border:1px solid rgba(29,78,216,.25);
-      background:rgba(29,78,216,.10);
-      color:#0b2a7a;
+      border:1px solid rgba(219,39,119,.25);
+      background:rgba(219,39,119,.10);
+      color:#9d174d;
     }
     .selValue{
       font-size:16px;font-weight:1000;line-height:1.2;
@@ -235,15 +241,15 @@
       border:1px solid var(--stroke); background:#fff;
     }
     .selValue.selected{
-      border:1px solid rgba(29,78,216,.25);
-      background:rgba(29,78,216,.10);
-      color:#0b2a7a;
+      border:1px solid rgba(219,39,119,.25);
+      background:rgba(219,39,119,.10);
+      color:#9d174d;
     }
 
     .actionBoard{
       margin-top:10px;border:1px solid var(--stroke);
       border-radius:18px;padding:12px;
-      background:linear-gradient(180deg,#ffffff,#f7fbff);
+      background:linear-gradient(180deg,#ffffff,#fff5f9);
       display:grid; gap:10px;
     }
     .actionHeader{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
@@ -256,7 +262,7 @@
       border:1px solid var(--stroke);
       border-radius:18px;
       padding:12px;
-      background:linear-gradient(180deg,#ffffff,#f8fbff);
+      background:linear-gradient(180deg,#ffffff,#fff7fb);
       box-shadow:0 8px 18px rgba(15,23,42,.05);
     }
     .pickSelName{font-weight:1000;font-size:13px}
@@ -265,9 +271,9 @@
       padding:12px 12px;border-radius:14px;border:1px solid var(--stroke);background:#fff;
     }
     .pickSelValue.selected{
-      border:1px solid rgba(29,78,216,.25);
-      background:rgba(29,78,216,.10);
-      color:#0b2a7a;
+      border:1px solid rgba(219,39,119,.25);
+      background:rgba(219,39,119,.10);
+      color:#9d174d;
     }
 
     .screen{display:none}
@@ -277,7 +283,7 @@
       border:1px solid var(--stroke);
       border-radius:18px;
       padding:12px;
-      background:linear-gradient(180deg,#ffffff,#f8fbff);
+      background:linear-gradient(180deg,#ffffff,#fff7fb);
       box-shadow:0 10px 22px rgba(15,23,42,.06);
       display:grid; gap:10px;
     }
@@ -516,6 +522,30 @@
       <div id="adminPanel" style="display:none;">
         <div class="hint">Manage questions here (saved on this phone).</div>
 
+        <!-- ✅ Shuffle controls -->
+        <div class="divider"></div>
+        <div class="grid">
+          <div class="hint"><b>Order settings</b></div>
+
+          <label class="listItem" style="align-items:center;">
+            <div>
+              <div style="font-weight:1000;">Shuffle Never Have I Ever</div>
+              <div class="tiny">ON = random order • OFF = normal order</div>
+            </div>
+            <input type="checkbox" id="shuffleNhie" checked style="width:auto; transform:scale(1.2);" />
+          </label>
+
+          <label class="listItem" style="align-items:center;">
+            <div>
+              <div style="font-weight:1000;">Shuffle Pick One</div>
+              <div class="tiny">ON = random order • OFF = normal order</div>
+            </div>
+            <input type="checkbox" id="shufflePick" checked style="width:auto; transform:scale(1.2);" />
+          </label>
+
+          <div class="tiny">Note: Shuffle applies on Create Room / Start / Reset / Mode switch.</div>
+        </div>
+
         <div class="divider"></div>
 
         <div class="grid">
@@ -593,9 +623,11 @@
         [arr[i],arr[j]] = [arr[j],arr[i]];
       }
     }
-    function buildOrder(len){
+
+    // ✅ buildOrder now supports shuffle ON/OFF
+    function buildOrder(len, doShuffle=true){
       const order = Array.from({length:len}, (_,i)=>i);
-      shuffle(order);
+      if(doShuffle) shuffle(order);
       return order;
     }
 
@@ -604,6 +636,23 @@
     // ---------------------------
     const QKEY = "party_questions_local_v2";
     const ADMIN_PASSWORD = "Admin@123";
+
+    // ✅ shuffle settings stored locally
+    const SKEY = "party_settings_local_v1";
+    const settings = { shuffleNhie:true, shufflePick:true };
+
+    function loadSettings(){
+      try{
+        const v = JSON.parse(localStorage.getItem(SKEY));
+        if(v && typeof v === "object"){
+          settings.shuffleNhie = v.shuffleNhie !== false;
+          settings.shufflePick = v.shufflePick !== false;
+        }
+      }catch{}
+    }
+    function saveSettings(){
+      localStorage.setItem(SKEY, JSON.stringify(settings));
+    }
 
     const SAMPLE_Q = {
       nhie:[
@@ -640,7 +689,8 @@
     // ---------------------------
     // Room doc model
     // ---------------------------
-    function makeNewRoomDoc({roomId, hostUid, hostName, q}){
+    function makeNewRoomDoc({roomId, hostUid, hostName, q, shuffleCfg}){
+      const sh = shuffleCfg || { nhie:true, pick:true };
       return {
         roomId,
         status: "waiting", // waiting | playing
@@ -650,8 +700,9 @@
           p2: { uid: "", name: "" }
         },
         mode: "nhie",
+        shuffle: sh, // ✅ store shuffle prefs in room
         idx: 0,
-        order: buildOrder((q?.nhie||[]).length),
+        order: buildOrder((q?.nhie||[]).length, sh.nhie),
         questions: q || {nhie:[], pick:[]},
         state: {
           counts: {p1:0,p2:0},
@@ -681,10 +732,10 @@
         return data || null;
       }
 
-      async function createRoom({hostUid, hostName, q}){
+      async function createRoom({hostUid, hostName, q, shuffleCfg}){
         for(let t=0;t<8;t++){
           const roomId = genRoomId();
-          const doc = makeNewRoomDoc({roomId, hostUid, hostName, q});
+          const doc = makeNewRoomDoc({roomId, hostUid, hostName, q, shuffleCfg});
           const { error } = await supabase
             .from("rooms")
             .insert({ id: roomId, doc, version: 0 });
@@ -794,42 +845,37 @@
         }
       }
 
-    function subscribeRoom(roomId, cb){
-  const rid = cleanRoomId(roomId);
-  let cancelled = false;
+      function subscribeRoom(roomId, cb){
+        const rid = cleanRoomId(roomId);
+        let cancelled = false;
 
-  async function fetchOnce(){
-    try{
-      const row = await readRoom(rid);
-      if(!cancelled) cb(row ? row.doc : null);
-    }catch(e){
-      console.error(e);
-    }
-  }
+        async function fetchOnce(){
+          try{
+            const row = await readRoom(rid);
+            if(!cancelled) cb(row ? row.doc : null);
+          }catch(e){
+            console.error(e);
+          }
+        }
 
-  // initial fetch
-  fetchOnce();
+        fetchOnce();
+        const poll = setInterval(fetchOnce, 1500);
 
-  // ✅ polling fallback (every 1.5s)
-  const poll = setInterval(fetchOnce, 1500);
+        const channel = supabase
+          .channel("room-" + rid)
+          .on(
+            "postgres_changes",
+            { event: "*", schema: "public", table: "rooms", filter: `id=eq.${rid}` },
+            fetchOnce
+          )
+          .subscribe();
 
-  // realtime (best effort)
-  const channel = supabase
-    .channel("room-" + rid)
-    .on(
-      "postgres_changes",
-      { event: "*", schema: "public", table: "rooms", filter: `id=eq.${rid}` },
-      fetchOnce
-    )
-    .subscribe();
-
-  return () => {
-    cancelled = true;
-    clearInterval(poll);
-    supabase.removeChannel(channel);
-  };
-}
-
+        return () => {
+          cancelled = true;
+          clearInterval(poll);
+          supabase.removeChannel(channel);
+        };
+      }
 
       return { createRoom, joinRoom, subscribeRoom, patchRoom, leaveRoom };
     })();
@@ -1066,7 +1112,8 @@
         const { roomId, role } = await RoomAPI.createRoom({
           hostUid: client.uid,
           hostName: myName,
-          q
+          q,
+          shuffleCfg: { nhie: settings.shuffleNhie, pick: settings.shufflePick }
         });
         client.role = role;
         client.roomId = roomId;
@@ -1107,12 +1154,16 @@
           const both = doc.players.p1.uid && doc.players.p2.uid;
           if(!both) return doc;
 
+          // keep room shuffle settings (or init)
+          doc.shuffle = doc.shuffle || { nhie:true, pick:true };
+
           doc.questions = q;
           doc.status = "playing";
           doc.mode = doc.mode || "nhie";
 
           const len = doc.mode === "nhie" ? (q.nhie||[]).length : (q.pick||[]).length;
-          doc.order = buildOrder(len);
+          const doShuffle = doc.mode === "nhie" ? doc.shuffle.nhie : doc.shuffle.pick;
+          doc.order = buildOrder(len, doShuffle);
           doc.idx = 0;
 
           doc.state.last = {p1:"—",p2:"—"};
@@ -1147,9 +1198,13 @@
 
       await RoomAPI.patchRoom(client.roomId, (doc) => {
         doc.mode = mode;
+        doc.shuffle = doc.shuffle || { nhie:true, pick:true };
+
         const q = doc.questions || {nhie:[], pick:[]};
         const len = mode === "nhie" ? (q.nhie||[]).length : (q.pick||[]).length;
-        doc.order = buildOrder(len);
+        const doShuffle = mode === "nhie" ? doc.shuffle.nhie : doc.shuffle.pick;
+
+        doc.order = buildOrder(len, doShuffle);
         doc.idx = 0;
 
         doc.state.last = {p1:"—",p2:"—"};
@@ -1248,9 +1303,12 @@
         const q = doc.questions || {nhie:[], pick:[]};
         const len = doc.mode === "nhie" ? (q.nhie||[]).length : (q.pick||[]).length;
 
+        doc.shuffle = doc.shuffle || { nhie:true, pick:true };
+        const doShuffle = doc.mode === "nhie" ? doc.shuffle.nhie : doc.shuffle.pick;
+
         doc.state.counts = {p1:0,p2:0};
         doc.idx = 0;
-        doc.order = buildOrder(len);
+        doc.order = buildOrder(len, doShuffle);
 
         doc.state.last = {p1:"—",p2:"—"};
         doc.state.nhieAnswered = {p1:false,p2:false};
@@ -1297,7 +1355,12 @@
       const unlocked = localStorage.getItem("admin_unlocked_supabase")==="1";
       el("adminLogin").style.display = unlocked ? "none" : "block";
       el("adminPanel").style.display = unlocked ? "block" : "none";
-      if(unlocked) renderLists();
+      if(unlocked){
+        renderLists();
+        // ✅ set toggles UI from settings
+        if(el("shuffleNhie")) el("shuffleNhie").checked = settings.shuffleNhie;
+        if(el("shufflePick")) el("shufflePick").checked = settings.shufflePick;
+      }
       el("adminPass").value = "";
       el("adminPass").setAttribute("readonly","readonly");
       setTimeout(()=>el("adminPass").blur(), 0);
@@ -1349,9 +1412,21 @@
         el("adminLogin").style.display = "none";
         el("adminPanel").style.display = "block";
         renderLists();
+        if(el("shuffleNhie")) el("shuffleNhie").checked = settings.shuffleNhie;
+        if(el("shufflePick")) el("shufflePick").checked = settings.shufflePick;
       }else{
         alert("Wrong password");
       }
+    });
+
+    // ✅ Shuffle toggles -> save locally
+    el("shuffleNhie")?.addEventListener("change", () => {
+      settings.shuffleNhie = !!el("shuffleNhie").checked;
+      saveSettings();
+    });
+    el("shufflePick")?.addEventListener("change", () => {
+      settings.shufflePick = !!el("shufflePick").checked;
+      saveSettings();
     });
 
     el("addNhie").addEventListener("click", ()=>{
@@ -1394,6 +1469,7 @@
     el("wipeAll").addEventListener("click", ()=>{
       if(!confirm("Reset EVERYTHING?")) return;
       localStorage.removeItem(QKEY);
+      localStorage.removeItem(SKEY);
       localStorage.removeItem("admin_unlocked_supabase");
       location.reload();
     });
@@ -1424,6 +1500,7 @@
 
     async function boot(){
       loadQuestions();
+      loadSettings(); // ✅ load shuffle settings
       setScreen("screenHome");
 
       const url = new URL(window.location.href);
@@ -1443,17 +1520,6 @@
       }
     }
 
-    // ---------------------------
-    // Screens + host-only buttons
-    // ---------------------------
-    function setHostButtons(){
-      el("next").disabled = !(client.role==="p1");
-      el("reset").disabled = !(client.role==="p1");
-    }
-
-    // ---------------------------
-    // (rest) - already wired
-    // ---------------------------
     boot();
   </script>
 </body>
