@@ -46,9 +46,17 @@
       padding:12px;
       backdrop-filter: blur(10px);
     }
-    .titleRow{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+    .titleRow{display:flex;justify-content:space-between;align-items:center;gap:10px} /* ✅ aligned center */
     h1{margin:0;font-size:16px;letter-spacing:.2px}
     .sub{margin-top:4px;color:var(--muted);font-size:12px;line-height:1.3}
+
+    /* ✅ Topbar logo only (replaces "Private Room" text) */
+    .topLogo{
+      height:46px;
+      width:auto;
+      display:block;
+      object-fit:contain;
+    }
 
     .seg{
       display:flex;gap:8px;margin-top:10px;
@@ -526,13 +534,15 @@
       font-size:11px;color:var(--muted);margin-top:6px
     }
 
-    /* ✅ Custom image icon (matches your sample) */
+    /* ✅ Custom uploaded image icon button (42x42 + 24px icon) */
     .iconBtn{
+      width:42px;height:42px;
+      padding:0;
       display:grid;place-items:center;
-      padding:10px 12px;
+      border-radius:16px;
     }
     .iconBtn img{
-      width:22px;height:22px;display:block;
+      width:24px;height:24px;display:block;
       filter: drop-shadow(0 6px 10px rgba(15,23,42,.10));
     }
   </style>
@@ -543,7 +553,8 @@
     <div class="topbar">
       <div class="titleRow">
         <div>
-          <h1>Private Room</h1>
+          <!-- ✅ Title text removed, logo only -->
+          <img class="topLogo" src="assets/private-room-logo.png" alt="Private Room logo" />
           <div class="sub" id="topSub">Supabase realtime rooms enabled ✅</div>
         </div>
         <button class="btn ghost" id="openAdmin">Manage</button>
@@ -822,11 +833,9 @@
             <input id="chatInput" placeholder="Type a message…" maxlength="220"/>
             <input id="chatFile" type="file" accept="image/*" style="display:none" />
 
+            <!-- ✅ SVG/data:image removed, uploaded icon used -->
             <button class="btn iconBtn" id="chatImgBtn" title="Send image" aria-label="Send image">
-              <img
-                alt="image"
-                src='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="white"/><rect x="10" y="14" width="40" height="28" rx="6" fill="%23ff4d7d" stroke="black" stroke-width="4"/><rect x="14" y="18" width="40" height="28" rx="6" fill="%23ffd64d" stroke="black" stroke-width="4"/><rect x="18" y="22" width="40" height="28" rx="6" fill="%23dff3ff" stroke="black" stroke-width="4"/><path d="M24 42l9-10 8 9 5-6 8 10H24z" fill="%2300b6ff" stroke="black" stroke-width="4" stroke-linejoin="round"/><circle cx="48" cy="30" r="5" fill="%23ffd64d" stroke="black" stroke-width="4"/></svg>'
-              />
+              <img alt="image" src="assets/image-icon.png" />
             </button>
 
             <button class="btn selected" id="chatSendBtn">Send</button>
