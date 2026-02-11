@@ -525,6 +525,16 @@
     .imgHint{
       font-size:11px;color:var(--muted);margin-top:6px
     }
+
+    /* ✅ Custom image icon (matches your sample) */
+    .iconBtn{
+      display:grid;place-items:center;
+      padding:10px 12px;
+    }
+    .iconBtn img{
+      width:22px;height:22px;display:block;
+      filter: drop-shadow(0 6px 10px rgba(15,23,42,.10));
+    }
   </style>
 </head>
 <body>
@@ -804,7 +814,6 @@
         <div class="chatShell">
           <div class="chatHead">
             <div class="chatTitle">💬 Room Chat</div>
-            <div class="tiny" id="chatMeta">Text + images (max 4MB)</div>
           </div>
 
           <div class="chatMsgs" id="chatMsgs"></div>
@@ -812,12 +821,18 @@
           <div class="chatSend">
             <input id="chatInput" placeholder="Type a message…" maxlength="220"/>
             <input id="chatFile" type="file" accept="image/*" style="display:none" />
-            <button class="btn" id="chatImgBtn" title="Send image">📷</button>
+
+            <button class="btn iconBtn" id="chatImgBtn" title="Send image" aria-label="Send image">
+              <img
+                alt="image"
+                src='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="white"/><rect x="10" y="14" width="40" height="28" rx="6" fill="%23ff4d7d" stroke="black" stroke-width="4"/><rect x="14" y="18" width="40" height="28" rx="6" fill="%23ffd64d" stroke="black" stroke-width="4"/><rect x="18" y="22" width="40" height="28" rx="6" fill="%23dff3ff" stroke="black" stroke-width="4"/><path d="M24 42l9-10 8 9 5-6 8 10H24z" fill="%2300b6ff" stroke="black" stroke-width="4" stroke-linejoin="round"/><circle cx="48" cy="30" r="5" fill="%23ffd64d" stroke="black" stroke-width="4"/></svg>'
+              />
+            </button>
+
             <button class="btn selected" id="chatSendBtn">Send</button>
           </div>
           <div class="imgHint tiny" id="chatErr" style="display:none;color:#b91c1c;font-weight:900;padding:0 12px 10px;"></div>
         </div>
-        <div class="tiny" style="margin-top:8px;">Pro tip: Chat tab open rahega by default. Host mode select karega tab game dikhega.</div>
       </div>
 
       <div class="tiny" style="margin-top:10px;">
@@ -961,9 +976,9 @@
     const SUPABASE_ANON_KEY = "sb_publishable_7WgNVc5MkpgJcoCj3iQArw_J4zcgtsg";
 
     // ✅ Chat image storage (IMPORTANT)
-    // 1) Supabase Dashboard → Storage → Create bucket: "chat-images"
+    // 1) Supabase Dashboard → Storage → Create bucket: "chat-media"
     // 2) Make it PUBLIC (easy) OR if private, you’ll need signed URLs logic.
-    const CHAT_IMG_BUCKET = "chat-images";
+    const CHAT_IMG_BUCKET = "chat-media";
     const MAX_IMAGE_BYTES = 4 * 1024 * 1024; // 4MB
 
     import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -2143,8 +2158,8 @@
 
     function pickWheelTargetIndex(type){
       const idx = [];
-      for(let i=0;i<WHEEL_SLICE_COUNT;i++){
-        const isDare = i === WHEEL_DARE_INDEX;
+      for(let i=0;i<8;i++){
+        const isDare = i === 2;
         if(type === "dare" && isDare) idx.push(i);
         if(type === "truth" && !isDare) idx.push(i);
       }
@@ -2152,7 +2167,7 @@
     }
 
     function computeStopDegForIndex(index){
-      const seg = 360 / WHEEL_SLICE_COUNT;
+      const seg = 360 / 8;
       const jitterMax = (seg/2) - 4;
       const jitter = (Math.random() * (jitterMax*2)) - jitterMax;
       const centerAngle = (index * seg) + (seg/2) + jitter;
