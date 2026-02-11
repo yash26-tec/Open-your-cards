@@ -42,21 +42,25 @@
       padding:14px;
     }
     .app{width:min(520px,100%);display:grid;gap:12px;padding-bottom:96px}
+
+    /* ✅ reduced extra white space in topbar (logo height SAME) */
     .topbar{
       background:rgba(255,255,255,.92);
       border:1px solid var(--stroke);
       border-radius:var(--r);
       box-shadow:var(--shadow);
-      padding:4px 6px;
+      padding:2px 6px;              /* was 4px 6px */
       backdrop-filter: blur(10px);
     }
-    .titleRow{display:flex;justify-content:space-between;align-items:center;gap:10px}
+    .titleRow{
+      display:flex;justify-content:space-between;align-items:flex-start;gap:10px; /* align-start reduces vertical slack */
+    }
     h1{margin:0;font-size:16px;letter-spacing:.2px}
     .sub{margin-top:4px;color:var(--muted);font-size:12px;line-height:1.3}
 
     /* ✅ Topbar logo only (replaces "Private Room" text) */
     .topLogo{
-      height:165px;
+      height:165px;                 /* KEEP SAME */
       width:auto;
       display:block;
       object-fit:contain;
@@ -486,6 +490,7 @@
       border-bottom:1px solid #ffe3ef;
       background:rgba(255,255,255,.75);
     }
+    /* ✅ Chat header shows only persons (no game/room text) */
     .chatTitle{font-weight:1000;display:flex;align-items:center;gap:8px}
     .chatMsgs{
       padding:12px;
@@ -510,9 +515,12 @@
       background:var(--chatMe);
       border-color:rgba(219,39,119,.20);
     }
-    .bTop{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:6px}
-    .bName{font-weight:1000;color:#9d174d;font-size:12px}
-    .bTime{font-size:11px;color:var(--muted);white-space:nowrap}
+    /* ✅ remove name repeat inside message (keep time only) */
+    .bTime{
+      font-size:11px;color:var(--muted);white-space:nowrap;
+      margin-top:6px;text-align:right;
+    }
+
     .chatSend{
       padding:10px 12px;
       border-top:1px solid #ffe3ef;
@@ -562,8 +570,8 @@
         <button class="btn ghost" id="openAdmin">Manage</button>
       </div>
 
-      <!-- ✅ FIX: this element was missing, causing "Cannot set properties of null (textContent)" -->
-      <div class="sub" id="topSub"></div>
+      <!-- ✅ keep element but hide when empty -->
+      <div class="sub" id="topSub" style="display:none;"></div>
 
       <!-- ✅ Tabs: Chat first. Game tabs after. -->
       <div class="seg" id="modeSeg" style="display:none;">
@@ -829,7 +837,7 @@
       <div id="chatArea" style="display:none; margin-top:10px;">
         <div class="chatShell">
           <div class="chatHead">
-            <div class="chatTitle">💬 Room Chat</div>
+            <div class="chatTitle" id="chatTitleNames">—</div>
           </div>
 
           <div class="chatMsgs" id="chatMsgs"></div>
@@ -1013,11 +1021,15 @@
     const show = (id) => el(id)?.classList.add("show");
     const hide = (id) => el(id)?.classList.remove("show");
 
-    // ✅ SAFER setText: prevents null crash if an element is missing
+    // ✅ SAFER setText + auto-hide topSub when empty
     const setText = (id, v) => {
       const n = el(id);
       if(!n) return;
-      n.textContent = v;
+      const val = (v ?? "").toString();
+      n.textContent = val;
+      if(id === "topSub"){
+        n.style.display = val.trim() ? "block" : "none";
+      }
     };
 
     const clampName = (s, fallback) => (String(s||"").trim() || fallback).slice(0, 24);
@@ -1626,6 +1638,11 @@
       const wrap = el("chatMsgs");
       if(!wrap) return;
 
+      // ✅ Chat header: show only persons
+      const p1n = (room.players?.p1?.name || "P1").toString().slice(0,24);
+      const p2n = (room.players?.p2?.name || "P2").toString().slice(0,24);
+      if(el("chatTitleNames")) el("chatTitleNames").textContent = `${p1n} • ${p2n}`;
+
       const lastId = msgs.length ? msgs[msgs.length-1]?.id : null;
       const newIncoming = lastId && lastId !== ui.lastChatIdSeen;
 
@@ -1651,7 +1668,6 @@
       wrap.innerHTML = msgs.map(m => {
         const role = m?.role || "";
         const isMe = role === client.role;
-        const name = (m?.name || "Player").toString().slice(0,24);
         const t = m?.ts || null;
         const time = t ? fmtTime(t) : "";
         const gender = normGender(m?.gender || (role==="p1" ? room.players?.p1?.gender : room.players?.p2?.gender));
@@ -1676,11 +1692,8 @@
           <div class="bubbleRow ${isMe ? "me" : ""}">
             ${isMe ? "" : `<img class="av" src="${av}" alt="avatar">`}
             <div class="bubble ${isMe ? "me" : ""}">
-              <div class="bTop">
-                <div class="bName">${escapeHtml(name)}</div>
-                <div class="bTime">${escapeHtml(time)}</div>
-              </div>
               ${body}
+              ${time ? `<div class="bTime">${escapeHtml(time)}</div>` : ``}
             </div>
             ${isMe ? `<img class="av" src="${av}" alt="avatar">` : ""}
           </div>
@@ -1933,7 +1946,10 @@
         client.roomId = roomId;
         ui.tab = "chat";
         ui.enteredPlayingOnce = false;
-        setText("topSub", "Room created. Share link and wait for friend.");
+
+        // ✅ removed: "Room created. Share link and wait for friend."
+        setText("topSub", "");
+
         subscribeRoom(roomId);
       }catch(err){
         console.error(err);
@@ -1954,7 +1970,10 @@
         client.roomId = rid;
         ui.tab = "chat";
         ui.enteredPlayingOnce = false;
-        setText("topSub", "Joined room. Waiting for host to start.");
+
+        // ✅ keep clean (no join notification)
+        setText("topSub", "");
+
         subscribeRoom(rid);
       }catch(err){
         console.error(err);
@@ -1998,6 +2017,7 @@
         });
 
         ui.tab = "chat";
+        setText("topSub", ""); // ✅ ensure no banner text
       }catch(err){
         console.error(err);
         showLobbyError(err?.message || "Cannot start");
@@ -2635,11 +2655,13 @@
       setScreen("screenHome");
 
       renderWheelLabels();
+      setText("topSub",""); // ✅ keep hidden by default
 
       const url = new URL(window.location.href);
       const roomFromUrl = cleanRoomId(url.searchParams.get("room") || "");
       if(roomFromUrl){
         if(el("roomIdJoin")) el("roomIdJoin").value = roomFromUrl;
+        // (optional) keep this message; remove if you want totally clean
         setText("topSub", "Room link opened. Enter your name & Join.");
         setTimeout(()=> el("myNameJoin")?.focus(), 250);
       }
