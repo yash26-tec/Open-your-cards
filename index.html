@@ -280,7 +280,7 @@
       color:#9d174d;
     }
 
-    /* ✅ Truth/Dare */
+    /* ✅ Truth/Dare + Chat UI */
     .tdBoard{
       margin-top:10px;border:1px solid var(--stroke);
       border-radius:18px;padding:12px;
@@ -309,6 +309,7 @@
     .cardBtn:hover{filter:brightness(1.01)}
     .cardBtn:disabled{opacity:.70; cursor:not-allowed}
 
+    /* ✅ BLUE selected for both players */
     .cardBtn.selected{
       background:linear-gradient(135deg,var(--tdSel),var(--tdSel2));
       border-color:rgba(37,99,235,.35);
@@ -324,9 +325,33 @@
       pointer-events:none;
     }
 
-    .wheelWrap{display:grid;place-items:center;gap:10px;padding:6px 0 2px;}
-    .wheelStage{position:relative;width:264px;height:264px;display:grid;place-items:center;}
-    .wheelGlow{position:absolute; inset:-12px;border-radius:50%;background:radial-gradient(closest-side, rgba(255,255,255,.55), transparent 60%);filter:blur(2px);opacity:.85;pointer-events:none;}
+    /* =========================
+       ✅ NEW: 8-slice wheel + center SPIN button (image jaisa)
+       - Visual: 8 colorful slices, 1 slice "DARE"
+       - Logic: DARE probability EXACT ~10%
+       ========================= */
+    .wheelWrap{
+      display:grid;
+      place-items:center;
+      gap:10px;
+      padding:6px 0 2px;
+    }
+    .wheelStage{
+      position:relative;
+      width:264px;
+      height:264px;
+      display:grid;
+      place-items:center;
+    }
+    .wheelGlow{
+      position:absolute; inset:-12px;
+      border-radius:50%;
+      background:radial-gradient(closest-side, rgba(255,255,255,.55), transparent 60%);
+      filter:blur(2px);
+      opacity:.85;
+      pointer-events:none;
+    }
+
     .wheelPointer{
       position:absolute;
       top:-12px; left:50%;
@@ -347,8 +372,10 @@
       border:2px solid #fff;
       box-shadow:0 10px 18px rgba(219,39,119,.22);
     }
+
     .wheel{
       width:252px;height:252px;border-radius:50%;
+      /* image jaisa: white ring + thin stroke */
       border:10px solid #fff;
       outline:2px solid rgba(15,23,42,.12);
       box-shadow:
@@ -356,6 +383,7 @@
         0 16px 36px rgba(219,39,119,.16);
       background:
         conic-gradient(from -90deg,
+          /* 8 slices (colors) */
           #22c55e 0deg 45deg,
           #f59e0b 45deg 90deg,
           #ef4444 90deg 135deg,
@@ -371,6 +399,7 @@
       overflow:hidden;
       z-index:2;
     }
+    /* subtle slice separators + shine */
     .wheel::before{
       content:"";
       position:absolute; inset:0;
@@ -394,10 +423,18 @@
         radial-gradient(closest-side, rgba(0,0,0,.06), transparent 70%);
       pointer-events:none;
     }
-    .wheelText{position:absolute;inset:0;pointer-events:none;z-index:3;}
+
+    /* Labels on slices (JS injects 8 items) */
+    .wheelText{
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      z-index:3;
+    }
     .wheelText .lbl{
       position:absolute;
-      left:50%; top:50%;
+      left:50%;
+      top:50%;
       width:120px;
       transform-origin:0 0;
       font-weight:1000;
@@ -424,6 +461,7 @@
       border:1px solid rgba(0,0,0,.18);
     }
 
+    /* Center SPIN button (clickable) */
     .wheelSpinBtn{
       position:absolute;
       width:92px;height:92px;border-radius:50%;
@@ -442,7 +480,14 @@
     }
     .wheelSpinBtn:active{transform:scale(.99)}
     .wheelSpinBtn:disabled{opacity:.55; cursor:not-allowed; transform:none}
-    .wheelSpinBtn small{display:block;font-size:10px;opacity:.9;letter-spacing:.6px;margin-top:2px;font-weight:900;}
+    .wheelSpinBtn small{
+      display:block;
+      font-size:10px;
+      opacity:.9;
+      letter-spacing:.6px;
+      margin-top:2px;
+      font-weight:900;
+    }
 
     .tdBadge{
       display:inline-flex;
@@ -464,6 +509,7 @@
     .tdBadge.truth{background:rgba(219,39,119,.12);color:#9d174d;}
     .tdBadge.dare{background:rgba(239,68,68,.10);color:#b91c1c;}
 
+    /* ✅ Selected question box (wheel ke niche, chat se just upar) */
     .tdChosenBox{
       border:1px solid rgba(37,99,235,.22);
       background:linear-gradient(180deg, rgba(37,99,235,.08), rgba(255,255,255,.92));
@@ -472,15 +518,27 @@
       box-shadow:0 12px 26px rgba(37,99,235,.08);
       display:none;
     }
-    .tdChosenTop{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;}
-    .tdChosenTitle{font-weight:1000;color:#1d4ed8;display:flex;align-items:center;gap:8px;}
+    .tdChosenTop{
+      display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;
+      margin-bottom:8px;
+    }
+    .tdChosenTitle{
+      font-weight:1000;
+      color:#1d4ed8;
+      display:flex;align-items:center;gap:8px;
+    }
     .tdChosenText{
-      font-size:16px;font-weight:1000;line-height:1.25;color:var(--txt);
-      padding:10px 12px;border-radius:14px;background:#fff;border:1px solid rgba(37,99,235,.18);
+      font-size:16px;
+      font-weight:1000;
+      line-height:1.25;
+      color:var(--txt);
+      padding:10px 12px;
+      border-radius:14px;
+      background:#fff;
+      border:1px solid rgba(37,99,235,.18);
     }
 
-    /* ✅ NEW: Separate Room Chat section */
-    .chatSection{
+    .chatBox{
       margin-top:10px;
       border:1px solid var(--stroke);
       border-radius:18px;
@@ -497,36 +555,24 @@
     .chatTitle{font-weight:1000}
     .chatMsgs{
       padding:10px 12px;
-      max-height:360px;
+      max-height:220px;
       overflow:auto;
-      display:flex;
-      flex-direction:column;
-      gap:10px;
+      display:grid; gap:8px;
     }
-    .chatBubble{
-      max-width:85%;
-      border-radius:16px;
-      padding:10px 12px;
+    .msg{
       border:1px solid var(--stroke);
+      border-radius:14px;
+      padding:10px;
       background:#fff;
-      box-shadow:0 6px 14px rgba(15,23,42,.05);
       font-size:13px;
-      line-height:1.35;
+      line-height:1.3;
     }
-    .chatBubble.me{
-      align-self:flex-end;
-      background:linear-gradient(135deg,var(--blue),var(--blue2));
-      color:#fff;
-      border:0;
-      box-shadow:0 14px 30px rgba(219,39,119,.20);
-    }
-    .chatBubble .top{
+    .msgTop{
       display:flex;justify-content:space-between;gap:10px;align-items:center;
-      margin-bottom:6px;
-      font-weight:1000;
-      opacity:.95;
+      margin-bottom:4px;
     }
-    .chatBubble .time{font-weight:900;font-size:11px;opacity:.85;white-space:nowrap;}
+    .msgName{font-weight:1000;color:#9d174d}
+    .msgTime{font-size:11px;color:var(--muted);white-space:nowrap}
     .chatSend{
       padding:10px 12px;
       border-top:1px solid #ffe3ef;
@@ -567,12 +613,10 @@
         <button class="btn ghost" id="openAdmin">Manage</button>
       </div>
 
-      <!-- ✅ Added: Chat Tab (local only) -->
       <div class="seg" id="modeSeg" style="display:none;">
         <button id="tabNhie" class="active">Never Have I Ever</button>
         <button id="tabPick">Pick One</button>
         <button id="tabTD">Truth / Dare</button>
-        <button id="tabChat">Chat</button>
       </div>
     </div>
 
@@ -654,162 +698,154 @@
 
     <!-- GAME -->
     <div class="card screen" id="screenGame">
-
-      <!-- ✅ GAME MODE VIEW -->
-      <div id="gameModeView">
-        <div class="qBox">
-          <div class="qText" id="qText">Loading…</div>
-          <div class="qMeta">
-            <span id="qMeta">—</span>
-            <div class="prog" aria-hidden="true"><i id="progFill"></i></div>
-          </div>
-        </div>
-
-        <!-- NHIE -->
-        <div id="nhieArea">
-          <div class="scoreGrid">
-            <div class="scoreCard" id="scoreP1">
-              <div class="scoreTop">
-                <div class="scoreName" id="p1Name">Player 1</div>
-                <div class="scoreNum" id="p1Count">0</div>
-              </div>
-            </div>
-            <div class="scoreCard" id="scoreP2">
-              <div class="scoreTop">
-                <div class="scoreName" id="p2Name">Player 2</div>
-                <div class="scoreNum" id="p2Count">0</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="nhieSelectedGrid">
-            <div class="selCard">
-              <div class="selHeader">
-                <div class="selMini" id="p1SelMini">Player 1 • Selection</div>
-                <span class="selBadge" id="p1Badge">Pending</span>
-              </div>
-              <div class="selValue" id="p1SelBox">—</div>
-            </div>
-
-            <div class="selCard">
-              <div class="selHeader">
-                <div class="selMini" id="p2SelMini">Player 2 • Selection</div>
-                <span class="selBadge" id="p2Badge">Pending</span>
-              </div>
-              <div class="selValue" id="p2SelBox">—</div>
-            </div>
-          </div>
-
-          <div class="actionBoard">
-            <div class="actionHeader">
-              <span class="pill" id="nhieTurnPill">Turn: —</span>
-              <span class="status" id="nhieStatus">Select your answer.</span>
-            </div>
-            <div class="bigRow">
-              <button class="btn" id="nhieHave">I Have</button>
-              <button class="btn" id="nhieNever">I Never</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- PICK -->
-        <div id="pickArea" style="display:none; margin-top:10px;">
-          <div class="row" style="justify-content:space-between; align-items:center;">
-            <span class="pill" id="pickTurnPill">Turn: —</span>
-            <span class="tiny" id="pickStatus">Select an option.</span>
-          </div>
-
-          <div class="row" style="margin-top:10px;">
-            <button class="btn" id="opt1Btn" style="flex:1;">Option 1</button>
-            <button class="btn" id="opt2Btn" style="flex:1;">Option 2</button>
-          </div>
-
-          <div class="pickSelectedGrid">
-            <div class="pickSelCard">
-              <div class="pickSelName" id="p1Name2">Player 1</div>
-              <div class="pickSelValue" id="p1PickBox">—</div>
-            </div>
-            <div class="pickSelCard">
-              <div class="pickSelName" id="p2Name2">Player 2</div>
-              <div class="pickSelValue" id="p2PickBox">—</div>
-            </div>
-          </div>
-
-          <div class="tiny" style="margin-top:8px;">Pick One has no score. Only selections are shown.</div>
-        </div>
-
-        <!-- TRUTH / DARE -->
-        <div id="tdArea" style="display:none; margin-top:10px;">
-          <div class="tdBoard">
-            <div class="tdTop">
-              <div class="tdWho">
-                <span class="pill" id="tdTurnPill">Turn: —</span>
-                <span class="pill" id="tdPhasePill">Phase: —</span>
-              </div>
-              <div class="row" style="gap:8px">
-                <button class="btn selected" id="tdSpinBtn">🎡 Spin</button>
-                <button class="btn" id="tdShuffleBtn">🔀 Shuffle</button>
-                <button class="btn ghost" id="tdNextBtn">Next Spin</button>
-                <!-- ✅ Quick open chat -->
-                <button class="btn ghost" id="tdOpenChatBtn">💬 Chat</button>
-              </div>
-            </div>
-
-            <div class="tdBadge big" id="tdResultBadge">—</div>
-
-            <div class="wheelWrap">
-              <div class="wheelStage">
-                <div class="wheelGlow" aria-hidden="true"></div>
-                <div class="wheelPointer" aria-hidden="true"></div>
-
-                <div class="wheel" id="wheel">
-                  <div class="wheelText" id="wheelText" aria-hidden="true"></div>
-                </div>
-
-                <button class="wheelSpinBtn" id="wheelSpinBtn">
-                  SPIN
-                  <small>tap</small>
-                </button>
-              </div>
-              <div class="tiny" id="tdHint">—</div>
-            </div>
-
-            <div class="cardsGrid" id="tdCards"></div>
-
-            <div class="tdChosenBox" id="tdChosenBox">
-              <div class="tdChosenTop">
-                <div class="tdChosenTitle">✅ Selected</div>
-                <div class="tiny" id="tdChosenMeta">—</div>
-              </div>
-              <div class="tdChosenText" id="tdChosenText">—</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="tiny" style="margin-top:10px;">
-          Room: <span class="mono" id="gameRoomId">—</span> • You are: <span class="mono" id="gameMeRole">—</span>
+      <div class="qBox">
+        <div class="qText" id="qText">Loading…</div>
+        <div class="qMeta">
+          <span id="qMeta">—</span>
+          <div class="prog" aria-hidden="true"><i id="progFill"></i></div>
         </div>
       </div>
 
-      <!-- ✅ CHAT VIEW (separate section/tab) -->
-      <div id="chatView" style="display:none;">
-        <div class="chatSection">
+      <!-- NHIE -->
+      <div id="nhieArea">
+        <div class="scoreGrid">
+          <div class="scoreCard" id="scoreP1">
+            <div class="scoreTop">
+              <div class="scoreName" id="p1Name">Player 1</div>
+              <div class="scoreNum" id="p1Count">0</div>
+            </div>
+          </div>
+          <div class="scoreCard" id="scoreP2">
+            <div class="scoreTop">
+              <div class="scoreName" id="p2Name">Player 2</div>
+              <div class="scoreNum" id="p2Count">0</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="nhieSelectedGrid">
+          <div class="selCard">
+            <div class="selHeader">
+              <div class="selMini" id="p1SelMini">Player 1 • Selection</div>
+              <span class="selBadge" id="p1Badge">Pending</span>
+            </div>
+            <div class="selValue" id="p1SelBox">—</div>
+          </div>
+
+          <div class="selCard">
+            <div class="selHeader">
+              <div class="selMini" id="p2SelMini">Player 2 • Selection</div>
+              <span class="selBadge" id="p2Badge">Pending</span>
+            </div>
+            <div class="selValue" id="p2SelBox">—</div>
+          </div>
+        </div>
+
+        <div class="actionBoard">
+          <div class="actionHeader">
+            <span class="pill" id="nhieTurnPill">Turn: —</span>
+            <span class="status" id="nhieStatus">Select your answer.</span>
+          </div>
+          <div class="bigRow">
+            <button class="btn" id="nhieHave">I Have</button>
+            <button class="btn" id="nhieNever">I Never</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- PICK -->
+      <div id="pickArea" style="display:none; margin-top:10px;">
+        <div class="row" style="justify-content:space-between; align-items:center;">
+          <span class="pill" id="pickTurnPill">Turn: —</span>
+          <span class="tiny" id="pickStatus">Select an option.</span>
+        </div>
+
+        <div class="row" style="margin-top:10px;">
+          <button class="btn" id="opt1Btn" style="flex:1;">Option 1</button>
+          <button class="btn" id="opt2Btn" style="flex:1;">Option 2</button>
+        </div>
+
+        <div class="pickSelectedGrid">
+          <div class="pickSelCard">
+            <div class="pickSelName" id="p1Name2">Player 1</div>
+            <div class="pickSelValue" id="p1PickBox">—</div>
+          </div>
+          <div class="pickSelCard">
+            <div class="pickSelName" id="p2Name2">Player 2</div>
+            <div class="pickSelValue" id="p2PickBox">—</div>
+          </div>
+        </div>
+
+        <div class="tiny" style="margin-top:8px;">Pick One has no score. Only selections are shown.</div>
+      </div>
+
+      <!-- TRUTH / DARE -->
+      <div id="tdArea" style="display:none; margin-top:10px;">
+        <div class="tdBoard">
+          <div class="tdTop">
+            <div class="tdWho">
+              <span class="pill" id="tdTurnPill">Turn: —</span>
+              <span class="pill" id="tdPhasePill">Phase: —</span>
+            </div>
+            <div class="row" style="gap:8px">
+              <!-- keep buttons (not breaking old flow) -->
+              <button class="btn selected" id="tdSpinBtn">🎡 Spin</button>
+              <button class="btn" id="tdShuffleBtn">🔀 Shuffle</button>
+              <button class="btn ghost" id="tdNextBtn">Next Spin</button>
+            </div>
+          </div>
+
+          <!-- ✅ Big TRUTH/DARE result badge -->
+          <div class="tdBadge big" id="tdResultBadge">—</div>
+
+          <!-- ✅ NEW Wheel -->
+          <div class="wheelWrap">
+            <div class="wheelStage">
+              <div class="wheelGlow" aria-hidden="true"></div>
+              <div class="wheelPointer" aria-hidden="true"></div>
+
+              <div class="wheel" id="wheel">
+                <div class="wheelText" id="wheelText" aria-hidden="true"></div>
+              </div>
+
+              <!-- ✅ center SPIN button -->
+              <button class="wheelSpinBtn" id="wheelSpinBtn">
+                SPIN
+                <small>tap</small>
+              </button>
+            </div>
+            <div class="tiny" id="tdHint">—</div>
+          </div>
+
+          <!-- ✅ Cards -->
+          <div class="cardsGrid" id="tdCards"></div>
+
+          <!-- ✅ Selected question -->
+          <div class="tdChosenBox" id="tdChosenBox">
+            <div class="tdChosenTop">
+              <div class="tdChosenTitle">✅ Selected</div>
+              <div class="tiny" id="tdChosenMeta">—</div>
+            </div>
+            <div class="tdChosenText" id="tdChosenText">—</div>
+          </div>
+        </div>
+
+        <div class="chatBox">
           <div class="chatHead">
-            <div class="chatTitle">💬 Room Chat</div>
-            <div class="tiny" id="chatMeta2">—</div>
+            <div class="chatTitle">💬 Chat</div>
+            <div class="tiny" id="chatMeta">Last 40 messages</div>
           </div>
-          <div class="chatMsgs" id="chatMsgs2"></div>
+          <div class="chatMsgs" id="chatMsgs"></div>
           <div class="chatSend">
-            <input id="chatInput2" placeholder="Type a message…" maxlength="220"/>
-            <button class="btn selected" id="chatSendBtn2">Send</button>
+            <input id="chatInput" placeholder="Type a message…" maxlength="220"/>
+            <button class="btn selected" id="chatSendBtn">Send</button>
           </div>
-        </div>
-
-        <div class="tiny" style="margin-top:10px;">
-          Tip: Same room me jitne bhi log honge sabko live messages dikhenge ✅
         </div>
       </div>
 
+      <div class="tiny" style="margin-top:10px;">
+        Room: <span class="mono" id="gameRoomId">—</span> • You are: <span class="mono" id="gameMeRole">—</span>
+      </div>
     </div>
 
   </div>
@@ -857,6 +893,7 @@
       <div id="adminPanel" style="display:none;">
         <div class="hint">Manage questions here (saved on this phone).</div>
 
+        <!-- ✅ Shuffle controls -->
         <div class="divider"></div>
         <div class="grid">
           <div class="hint"><b>Order settings</b></div>
@@ -908,6 +945,7 @@
           <div class="list" id="pickList"></div>
         </div>
 
+        <!-- ✅ Truth/Dare manage -->
         <div class="divider"></div>
         <div class="grid">
           <div class="hint"><b>Truth</b> – Add unlimited:</div>
@@ -980,6 +1018,7 @@
       }
     }
 
+    // ✅ buildOrder now supports shuffle ON/OFF
     function buildOrder(len, doShuffle=true){
       const order = Array.from({length:len}, (_,i)=>i);
       if(doShuffle) shuffle(order);
@@ -1004,101 +1043,12 @@
     }
 
     // ---------------------------
-    // ✅ Room Chat (separate) — uses public.chat_messages
-    // IMPORTANT: Supabase → Realtime → enable for "chat_messages"
-    // ---------------------------
-    const ChatAPI = (() => {
-      let channel = null;
-
-      function escapeHtml(s){
-        return String(s||"")
-          .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
-          .replaceAll('"',"&quot;").replaceAll("'","&#039;");
-      }
-
-      function renderMessages(msgs){
-        const wrap = el("chatMsgs2");
-        if(!wrap) return;
-
-        if(!msgs.length){
-          wrap.innerHTML = `<div class="tiny">No messages yet. Say something 😄</div>`;
-          return;
-        }
-
-        const mySender = client.chatSender || "";
-        wrap.innerHTML = msgs.map(m=>{
-          const sender = (m?.sender || "Player").toString();
-          const message = (m?.message || "").toString();
-          const time = m?.created_at ? fmtTime(m.created_at) : "";
-          const isMe = sender === mySender;
-
-          return `
-            <div class="chatBubble ${isMe ? "me":""}">
-              <div class="top">
-                <div>${escapeHtml(sender)}</div>
-                <div class="time">${escapeHtml(time)}</div>
-              </div>
-              <div>${escapeHtml(message)}</div>
-            </div>
-          `;
-        }).join("");
-
-        wrap.scrollTop = wrap.scrollHeight;
-      }
-
-      async function loadLast(roomId, limit=80){
-        const { data, error } = await supabase
-          .from("chat_messages")
-          .select("id, room_id, sender, message, created_at")
-          .eq("room_id", roomId)
-          .order("created_at", { ascending: true })
-          .limit(limit);
-        if(error) throw error;
-        renderMessages(data || []);
-      }
-
-      async function send(roomId, sender, message){
-        const { error } = await supabase.from("chat_messages").insert({
-          room_id: roomId,
-          sender,
-          message
-        });
-        if(error) throw error;
-      }
-
-      async function start(roomId){
-        await stop();
-        await loadLast(roomId, 80);
-
-        channel = supabase
-          .channel("roomchat-" + roomId)
-          .on(
-            "postgres_changes",
-            { event: "INSERT", schema: "public", table: "chat_messages", filter: `room_id=eq.${roomId}` },
-            async () => {
-              // easiest + reliable: reload latest batch
-              await loadLast(roomId, 80);
-            }
-          )
-          .subscribe();
-      }
-
-      async function stop(){
-        if(channel){
-          supabase.removeChannel(channel);
-          channel = null;
-        }
-      }
-
-      return { start, stop, send, loadLast };
-    })();
-
-    // ---------------------------
     // Questions (Manage) - local
     // ---------------------------
     const QKEY = "party_questions_local_v3"; // bumped
     const ADMIN_PASSWORD = "Admin@123";
 
+    // ✅ shuffle settings stored locally
     const SKEY = "party_settings_local_v1";
     const settings = { shuffleNhie:true, shufflePick:true };
 
@@ -1144,6 +1094,7 @@
     const questions = { nhie:[], pick:[], truth:[], dare:[] };
 
     function loadQuestions(){
+      // try v3
       try{
         const v = JSON.parse(localStorage.getItem(QKEY));
         if(!v) throw 0;
@@ -1154,6 +1105,7 @@
         return;
       }catch{}
 
+      // fallback old v2 if exists
       try{
         const old = JSON.parse(localStorage.getItem("party_questions_local_v2"));
         if(old && typeof old === "object"){
@@ -1166,6 +1118,7 @@
         }
       }catch{}
 
+      // default sample
       questions.nhie = deepClone(SAMPLE_Q.nhie);
       questions.pick = deepClone(SAMPLE_Q.pick);
       questions.truth = deepClone(SAMPLE_Q.truth);
@@ -1182,16 +1135,16 @@
     // ---------------------------
     function tdInit(){
       return {
-        turn: "p1",
-        phase: "spin",
-        type: null,
-        spinDeg: 0,
-        spinToken: null,
-        sample: [],
+        turn: "p1",           // turn owner (spins + later next)
+        phase: "spin",        // spin | list | chosen
+        type: null,           // truth | dare
+        spinDeg: 0,           // wheel rotation degrees (stored)
+        spinToken: null,      // changes each spin (for animation sync)
+        sample: [],           // store text
         chosenText: "",
-        chosenIndex: null,
+        chosenIndex: null,    // ✅ selected card index
         chosenAt: null,
-        chosenBy: null
+        chosenBy: null        // p1/p2 (who selected from cards)
       };
     }
 
@@ -1199,18 +1152,28 @@
       const sh = shuffleCfg || { nhie:true, pick:true };
       return {
         roomId,
-        status: "waiting",
+        status: "waiting", // waiting | playing
         hostUid,
         players: {
           p1: { uid: hostUid, name: hostName },
           p2: { uid: "", name: "" }
         },
-        mode: "nhie",
-        shuffle: sh,
+        mode: "nhie", // nhie | pick | td
+        shuffle: sh, // store shuffle prefs in room
         idx: 0,
         order: buildOrder((q?.nhie||[]).length, sh.nhie),
         questions: q || {nhie:[], pick:[], truth:[], dare:[]},
         td: tdInit(),
+        chat: [], // last 40
+        state: {
+          counts: {p1:0,p2:0},
+          last: {p1:"—",p2:"—"},
+          nhieTurn: "p1",
+          nhieAnswered: {p1:false,p2:false},
+          pickLast: {p1:"—",p2:"—"},
+          pickTurn: "p1",
+          pickAnswered: {p1:false,p2:false},
+        },
         updatedAt: Date.now()
       };
     }
@@ -1335,6 +1298,7 @@
             doc.state.pickTurn = "p1";
 
             doc.td = tdInit();
+            doc.chat = [];
 
             doc.updatedAt = Date.now();
             const ok = await writeRoomCAS(rid, row.version, doc);
@@ -1383,20 +1347,7 @@
     // ---------------------------
     // Client state
     // ---------------------------
-    const client = {
-      uid:"",
-      roomId:"",
-      role:"",
-      room:null,
-      unsub:null,
-
-      // ✅ local UI tab
-      uiTab:"game", // "game" | "chat"
-
-      // ✅ chat identity (stored after join/create)
-      myName:"",
-      chatSender:""
-    };
+    const client = { uid:"", roomId:"", role:"", room:null, unsub:null };
 
     function setScreen(name){
       ["screenHome","screenLobby","screenGame"].forEach(id => hide(id));
@@ -1422,15 +1373,12 @@
       return u.toString();
     }
 
-    async function cleanupRoom(){
+    function cleanupRoom(){
       if(client.unsub) client.unsub();
       client.unsub = null;
       client.room = null;
       client.roomId = "";
       client.role = "";
-      client.uiTab = "game";
-      // stop chat realtime
-      await ChatAPI.stop();
     }
 
     function subscribeRoom(roomId){
@@ -1478,33 +1426,15 @@
     }
 
     function setModeUI(room){
-      // ✅ game mode buttons reflect room.mode
-      el("tabNhie").classList.toggle("active", client.uiTab==="game" && room.mode === "nhie");
-      el("tabPick").classList.toggle("active", client.uiTab==="game" && room.mode === "pick");
-      el("tabTD").classList.toggle("active", client.uiTab==="game" && room.mode === "td");
+      el("tabNhie").classList.toggle("active", room.mode === "nhie");
+      el("tabPick").classList.toggle("active", room.mode === "pick");
+      el("tabTD").classList.toggle("active", room.mode === "td");
 
-      // ✅ chat tab reflect local uiTab
-      el("tabChat").classList.toggle("active", client.uiTab === "chat");
-
-      // show/hide views
-      el("gameModeView").style.display = (client.uiTab === "game") ? "block" : "none";
-      el("chatView").style.display = (client.uiTab === "chat") ? "block" : "none";
-
-      // inside game view, show correct mode section
       el("nhieArea").style.display = room.mode === "nhie" ? "block" : "none";
       el("pickArea").style.display = room.mode === "pick" ? "block" : "none";
       el("tdArea").style.display   = room.mode === "td"   ? "block" : "none";
 
-      // bottom bar only for nhie/pick in game tab
-      const showBottom = (client.uiTab === "game") && (room.mode !== "td");
-      el("bottomBar").style.display = showBottom ? "flex" : "none";
-
-      // chat meta line
-      if(client.roomId){
-        el("chatMeta2").textContent = `Room: ${client.roomId} • You: ${client.role.toUpperCase()}`;
-      }else{
-        el("chatMeta2").textContent = "—";
-      }
+      el("bottomBar").style.display = room.mode === "td" ? "none" : "flex";
     }
 
     function getCurrentItem(room){
@@ -1586,6 +1516,34 @@
       el("opt2Btn").classList.toggle("selected", sel && sel !== "—" && sel === o2);
     }
 
+    function renderChat(room){
+      const msgs = Array.isArray(room.chat) ? room.chat : [];
+      const wrap = el("chatMsgs");
+      if(!wrap) return;
+      if(!msgs.length){
+        wrap.innerHTML = `<div class="tiny">No messages yet. Say something 😄</div>`;
+        return;
+      }
+      wrap.innerHTML = msgs.map(m => {
+        const name = (m?.name || "Player").toString().slice(0,24);
+        const t = m?.ts || null;
+        const time = t ? fmtTime(t) : "";
+        const text = (m?.text || "").toString()
+          .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+          .replaceAll('"',"&quot;").replaceAll("'","&#039;");
+        return `
+          <div class="msg">
+            <div class="msgTop">
+              <div class="msgName">${name}</div>
+              <div class="msgTime">${time}</div>
+            </div>
+            <div>${text}</div>
+          </div>
+        `;
+      }).join("");
+      wrap.scrollTop = wrap.scrollHeight;
+    }
+
     // ✅ wheel animation guard (local only)
     let lastSpinTokenLocal = null;
 
@@ -1620,18 +1578,21 @@
     }
 
     // ---------------------------
-    // ✅ Wheel labels (8 slices)
+    // ✅ Wheel labels (8 slices) + 1 DARE slice (visual)
     // ---------------------------
     const WHEEL_SLICE_COUNT = 8;
-    const WHEEL_DARE_INDEX = 2; // 1 slice visual "DARE"
+    const WHEEL_DARE_INDEX = 2; // (0-7) ek slice "DARE" (visual). Probability still 10% via logic.
     function renderWheelLabels(){
       const wrap = el("wheelText");
       if(!wrap) return;
       const seg = 360 / WHEEL_SLICE_COUNT;
+      // Put label near outer area
       wrap.innerHTML = Array.from({length: WHEEL_SLICE_COUNT}, (_,i)=>{
         const isDare = i === WHEEL_DARE_INDEX;
         const label = isDare ? "DARE" : "TRUTH";
+        // Rotate label to slice center, then translate outward
         const angle = (-90 + i*seg + seg/2);
+        // We rotate around center; translate out to rim (~92px)
         const cls = "lbl" + (isDare ? " dare" : "");
         return `
           <div class="${cls}" style="transform: translate(-50%,-50%) rotate(${angle}deg) translate(78px) rotate(${90}deg);">
@@ -1650,7 +1611,7 @@
       setText("tdPhasePill", `Phase: ${room.td.phase || "spin"}`);
 
       const phase = room.td.phase || "spin";
-      const type = room.td.type;
+      const type = room.td.type; // truth/dare
       setBadge(type);
 
       const other = otherRole(turn);
@@ -1660,10 +1621,11 @@
       const canNext = (phase === "chosen") && (client.role === turn);
 
       el("tdSpinBtn").disabled = !canSpin;
-      el("wheelSpinBtn").disabled = !canSpin;
+      el("wheelSpinBtn").disabled = !canSpin; // ✅ center button sync
       el("tdShuffleBtn").disabled = !canShuffle;
       el("tdNextBtn").disabled = !canNext;
 
+      // Wheel rotate (sync via td.spinDeg + td.spinToken)
       const wheel = el("wheel");
       const token = room.td.spinToken || null;
       const deg = Number(room.td.spinDeg || 0);
@@ -1690,6 +1652,7 @@
         setText("tdHint", `Done? Turn player "Next Spin" dabaye.`);
       }
 
+      // Cards list
       const cardsWrap = el("tdCards");
       const sample = Array.isArray(room.td.sample) ? room.td.sample : [];
       const chosenIndex = (room.td.chosenIndex ?? null);
@@ -1702,8 +1665,7 @@
         }else{
           const otherCanClick = (phase === "list") && (client.role === other);
           cardsWrap.innerHTML = sample.map((t,i)=> {
-            const safe = String(t||"")
-              .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+            const safe = String(t||"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
               .replaceAll('"',"&quot;").replaceAll("'","&#039;");
 
             const isSel = (chosenIndex !== null && Number(chosenIndex) === i);
@@ -1715,6 +1677,7 @@
       }
 
       showChosenBox(room);
+      renderChat(room);
       setProgress(room);
     }
 
@@ -1741,10 +1704,6 @@
 
       setText("gameRoomId", room.roomId);
       setText("gameMeRole", client.role || "—");
-
-      // ✅ keep tab UI consistent
-      setModeUI(room);
-
       if(room.status !== "playing") return;
 
       setText("p1Name", room.players.p1.name || "Player 1");
@@ -1753,6 +1712,9 @@
       setText("p2Name2", room.players.p2.name || "Player 2");
 
       room.td = room.td || tdInit();
+      room.chat = Array.isArray(room.chat) ? room.chat : [];
+
+      setModeUI(room);
 
       const q = getQ(room);
       const item = getCurrentItem(room);
@@ -1814,14 +1776,8 @@
         });
         client.role = role;
         client.roomId = roomId;
-        client.myName = myName;
-        client.chatSender = `${myName} • ${role.toUpperCase()}`;
-
         setText("topSub", "Room created. Share link and wait for friend.");
         subscribeRoom(roomId);
-
-        // ✅ start chat realtime right away (works in lobby too)
-        await ChatAPI.start(roomId);
       }catch(err){
         console.error(err);
         showHomeError(err?.message || "Failed to create room");
@@ -1838,14 +1794,8 @@
         const { role, roomId: rid } = await RoomAPI.joinRoom({ roomId, uid: client.uid, name: myName });
         client.role = role;
         client.roomId = rid;
-        client.myName = myName;
-        client.chatSender = `${myName} • ${role.toUpperCase()}`;
-
         setText("topSub", "Joined room. Waiting for host to start.");
         subscribeRoom(rid);
-
-        // ✅ start chat realtime
-        await ChatAPI.start(rid);
       }catch(err){
         console.error(err);
         showHomeError(err?.message || "Failed to join room");
@@ -1874,9 +1824,6 @@
           doc.order = buildOrder(len, doShuffle);
           doc.idx = 0;
 
-          doc.state = doc.state || {};
-          doc.state.counts = doc.state.counts || {p1:0,p2:0};
-
           doc.state.last = {p1:"—",p2:"—"};
           doc.state.nhieAnswered = {p1:false,p2:false};
           doc.state.nhieTurn = "p1";
@@ -1886,6 +1833,7 @@
           doc.state.pickTurn = "p1";
 
           doc.td = tdInit();
+          doc.chat = [];
 
           return doc;
         });
@@ -1901,7 +1849,7 @@
           await RoomAPI.leaveRoom(client.roomId, client.uid);
         }
       }catch(e){ console.error(e); }
-      await cleanupRoom();
+      cleanupRoom();
       setScreen("screenHome");
     }
 
@@ -1914,17 +1862,6 @@
         doc.shuffle = doc.shuffle || { nhie:true, pick:true };
 
         const q = getQ(doc);
-
-        // ensure state exists
-        doc.state = doc.state || {
-          counts:{p1:0,p2:0},
-          last:{p1:"—",p2:"—"},
-          nhieTurn:"p1",
-          nhieAnswered:{p1:false,p2:false},
-          pickLast:{p1:"—",p2:"—"},
-          pickTurn:"p1",
-          pickAnswered:{p1:false,p2:false},
-        };
 
         if(mode === "nhie" || mode === "pick"){
           const len = mode === "nhie" ? q.nhie.length : q.pick.length;
@@ -2042,6 +1979,7 @@
       await RoomAPI.patchRoom(client.roomId, (doc) => {
         if(doc.mode === "td"){
           doc.td = tdInit();
+          doc.chat = [];
           return doc;
         }
 
@@ -2069,12 +2007,14 @@
 
     // ---------------------------
     // Truth/Dare actions (Wheel-based)
+    // Turn player spins. Other player selects.
     // ---------------------------
     function tdPool(doc){
       const q = getQ(doc);
       return { truth: q.truth, dare: q.dare };
     }
 
+    // ✅ Weighted (DARE ~10%) + land on correct labeled slice
     function pickWheelTargetIndex(type){
       const idx = [];
       for(let i=0;i<WHEEL_SLICE_COUNT;i++){
@@ -2087,7 +2027,10 @@
 
     function computeStopDegForIndex(index){
       const seg = 360 / WHEEL_SLICE_COUNT;
-      const jitterMax = (seg/2) - 4;
+      // We want chosen slice CENTER to align to pointer (top).
+      // With conic-gradient(from -90deg), slice i center = i*seg + seg/2.
+      // Rotation needed (clockwise) = 360 - (i*seg + seg/2 + jitter)
+      const jitterMax = (seg/2) - 4; // leave margin from borders
       const jitter = (Math.random() * (jitterMax*2)) - jitterMax;
       const centerAngle = (index * seg) + (seg/2) + jitter;
       const stop = (360 - centerAngle) % 360;
@@ -2106,10 +2049,14 @@
         if(doc.td.phase !== "spin") return doc;
         if(client.role !== turn) return doc;
 
+        // ✅ EXACT ~10% dare
         const type = (Math.random() < 0.10) ? "dare" : "truth";
+
+        // choose visual target slice index that matches label
         const targetIndex = pickWheelTargetIndex(type);
 
-        const spins = 6 + Math.floor(Math.random()*3);
+        // spin amount
+        const spins = 6 + Math.floor(Math.random()*3); // 6-8
         const stop = computeStopDegForIndex(targetIndex);
         const deg = spins*360 + stop;
 
@@ -2205,36 +2152,34 @@
       });
     }
 
-    // ---------------------------
-    // ✅ Chat view actions
-    // ---------------------------
-    async function chatSend2(){
+    async function chatSend(){
       if(!client.roomId) return;
-      const text = (el("chatInput2").value || "").trim();
+      const text = (el("chatInput").value || "").trim();
       if(!text) return;
-      el("chatInput2").value = "";
+      el("chatInput").value = "";
 
-      try{
-        await ChatAPI.send(client.roomId, client.chatSender || "Player", text.slice(0,220));
-        // optimistic load (optional)
-        await ChatAPI.loadLast(client.roomId, 80);
-      }catch(e){
-        console.error(e);
-        alert("Chat send failed: " + (e?.message || "unknown"));
-      }
-    }
+      await RoomAPI.patchRoom(client.roomId, (doc) => {
+        if(doc.status !== "playing") return doc;
+        doc.chat = Array.isArray(doc.chat) ? doc.chat : [];
 
-    function setUITab(tab){
-      client.uiTab = tab;
-      if(client.room) setModeUI(client.room);
-      if(tab === "chat" && client.roomId){
-        // refresh chat screen when opening
-        ChatAPI.loadLast(client.roomId, 80).catch(()=>{});
-      }
+        const myName = client.role==="p1" ? (doc.players.p1.name||"P1") : (doc.players.p2.name||"P2");
+        const msg = {
+          id: `${Date.now()}_${Math.random().toString(16).slice(2)}`,
+          uid: client.uid,
+          role: client.role,
+          name: myName,
+          text: text.slice(0, 220),
+          ts: nowISO()
+        };
+
+        doc.chat.push(msg);
+        if(doc.chat.length > 40) doc.chat = doc.chat.slice(-40);
+        return doc;
+      });
     }
 
     // ---------------------------
-    // Manage Sheet helpers
+    // Manage Sheet
     // ---------------------------
     function escapeHtml(s){
       return String(s).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
@@ -2315,16 +2260,9 @@
       }
     });
 
-    // ✅ Game mode tabs (host can change mode; others just view)
-    el("tabNhie").addEventListener("click", ()=> { setUITab("game"); setMode("nhie"); });
-    el("tabPick").addEventListener("click", ()=> { setUITab("game"); setMode("pick"); });
-    el("tabTD").addEventListener("click", ()=> { setUITab("game"); setMode("td"); });
-
-    // ✅ Chat tab (local only)
-    el("tabChat").addEventListener("click", ()=> setUITab("chat"));
-
-    // Quick open chat from TD
-    el("tdOpenChatBtn").addEventListener("click", ()=> setUITab("chat"));
+    el("tabNhie").addEventListener("click", ()=> setMode("nhie"));
+    el("tabPick").addEventListener("click", ()=> setMode("pick"));
+    el("tabTD").addEventListener("click", ()=> setMode("td"));
 
     el("nhieHave").addEventListener("click", ()=> nhieSelect("I Have"));
     el("nhieNever").addEventListener("click", ()=> nhieSelect("I Never"));
@@ -2394,6 +2332,7 @@
       saveQuestions(); renderLists();
     });
 
+    // Truth/Dare manage
     el("addTruth").addEventListener("click", ()=>{
       const v = (el("truthNew").value || "").trim();
       if(!v) return;
@@ -2461,9 +2400,9 @@
       }
     });
 
-    // TD events
+    // TD + Chat events
     el("tdSpinBtn").addEventListener("click", tdSpin);
-    el("wheelSpinBtn").addEventListener("click", tdSpin);
+    el("wheelSpinBtn").addEventListener("click", tdSpin); // ✅ center spin
     el("tdShuffleBtn").addEventListener("click", tdShuffleSample);
     el("tdNextBtn").addEventListener("click", tdNextSpin);
 
@@ -2473,12 +2412,11 @@
       tdChoose(Number(i));
     });
 
-    // Chat events
-    el("chatSendBtn2").addEventListener("click", chatSend2);
-    el("chatInput2").addEventListener("keydown", (e)=>{
+    el("chatSendBtn").addEventListener("click", chatSend);
+    el("chatInput").addEventListener("keydown", (e)=>{
       if(e.key === "Enter"){
         e.preventDefault();
-        chatSend2();
+        chatSend();
       }
     });
 
@@ -2498,6 +2436,7 @@
       loadSettings();
       setScreen("screenHome");
 
+      // ✅ wheel labels once
       renderWheelLabels();
 
       const url = new URL(window.location.href);
