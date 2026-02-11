@@ -1,10 +1,13 @@
-
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Private Room</title>
+
+  <!-- ✅ Fix favicon 404 (optional but clean) -->
+  <link rel="icon" href="data:," />
+
   <style>
     :root{
       /* ✅ Pinkish-Red Theme */
@@ -47,7 +50,7 @@
       padding:4px 6px;
       backdrop-filter: blur(10px);
     }
-    .titleRow{display:flex;justify-content:space-between;align-items:center;gap:10px} /* ✅ aligned center */
+    .titleRow{display:flex;justify-content:space-between;align-items:center;gap:10px}
     h1{margin:0;font-size:16px;letter-spacing:.2px}
     .sub{margin-top:4px;color:var(--muted);font-size:12px;line-height:1.3}
 
@@ -554,11 +557,13 @@
     <div class="topbar">
       <div class="titleRow">
         <div>
-          <!-- ✅ Title text removed, logo only -->
-        <img class="topLogo" src="assets/3003fd67-ad54-4e2e-a90e-bcb16878ae97.png" alt="Private Room logo" />
+          <img class="topLogo" src="assets/3003fd67-ad54-4e2e-a90e-bcb16878ae97.png" alt="Private Room logo" />
         </div>
         <button class="btn ghost" id="openAdmin">Manage</button>
       </div>
+
+      <!-- ✅ FIX: this element was missing, causing "Cannot set properties of null (textContent)" -->
+      <div class="sub" id="topSub"></div>
 
       <!-- ✅ Tabs: Chat first. Game tabs after. -->
       <div class="seg" id="modeSeg" style="display:none;">
@@ -833,7 +838,6 @@
             <input id="chatInput" placeholder="Type a message…" maxlength="220"/>
             <input id="chatFile" type="file" accept="image/*" style="display:none" />
 
-            <!-- ✅ SVG/data:image removed, uploaded icon used -->
             <button class="btn iconBtn" id="chatImgBtn" title="Send image" aria-label="Send image">
               <img alt="image" src="assets/a0dae1fa-ca14-4604-8919-fa9e3577ea25.png" />
             </button>
@@ -984,9 +988,6 @@
     const SUPABASE_URL = "https://xgiryhgysebcskkyhmej.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable_7WgNVc5MkpgJcoCj3iQArw_J4zcgtsg";
 
-    // ✅ Chat image storage (IMPORTANT)
-    // 1) Supabase Dashboard → Storage → Create bucket: "chat-media"
-    // 2) Make it PUBLIC (easy) OR if private, you’ll need signed URLs logic.
     const CHAT_IMG_BUCKET = "chat-media";
     const MAX_IMAGE_BYTES = 4 * 1024 * 1024; // 4MB
 
@@ -1008,9 +1009,17 @@
     // Utilities
     // ---------------------------
     const el = (id) => document.getElementById(id);
-    const show = (id) => el(id).classList.add("show");
-    const hide = (id) => el(id).classList.remove("show");
-    const setText = (id, v) => el(id).textContent = v;
+
+    const show = (id) => el(id)?.classList.add("show");
+    const hide = (id) => el(id)?.classList.remove("show");
+
+    // ✅ SAFER setText: prevents null crash if an element is missing
+    const setText = (id, v) => {
+      const n = el(id);
+      if(!n) return;
+      n.textContent = v;
+    };
+
     const clampName = (s, fallback) => (String(s||"").trim() || fallback).slice(0, 24);
 
     function cleanRoomId(s){
@@ -1063,8 +1072,10 @@
     }
 
     function showChatErr(msg){
-      el("chatErr").style.display = msg ? "block" : "none";
-      el("chatErr").textContent = msg || "";
+      const ce = el("chatErr");
+      if(!ce) return;
+      ce.style.display = msg ? "block" : "none";
+      ce.textContent = msg || "";
     }
 
     function safeExtFromFile(file){
@@ -1217,7 +1228,7 @@
         order: buildOrder((q?.nhie||[]).length, sh.nhie),
         questions: q || {nhie:[], pick:[], truth:[], dare:[]},
         td: tdInit(),
-        chat: [], // ✅ last 40 messages in doc (text + images)
+        chat: [],
         state: {
           counts: {p1:0,p2:0},
           last: {p1:"—",p2:"—"},
@@ -1407,9 +1418,8 @@
     // ---------------------------
     const client = { uid:"", roomId:"", role:"", room:null, unsub:null };
 
-    // ✅ Local tab (Chat tab does NOT change room.mode)
     const ui = {
-      tab: "chat",               // default chat first
+      tab: "chat",
       lastChatIdSeen: null,
       enteredPlayingOnce: false
     };
@@ -1418,18 +1428,22 @@
       ["screenHome","screenLobby","screenGame"].forEach(id => hide(id));
       show(name);
       const isGame = name === "screenGame";
-      el("reset").disabled = !isGame;
-      el("next").disabled  = !isGame;
-      el("modeSeg").style.display = isGame ? "flex" : "none";
+      if(el("reset")) el("reset").disabled = !isGame;
+      if(el("next"))  el("next").disabled  = !isGame;
+      if(el("modeSeg")) el("modeSeg").style.display = isGame ? "flex" : "none";
     }
 
     function showHomeError(msg){
-      el("homeErr").style.display = msg ? "block" : "none";
-      el("homeErr").textContent = msg || "";
+      const he = el("homeErr");
+      if(!he) return;
+      he.style.display = msg ? "block" : "none";
+      he.textContent = msg || "";
     }
     function showLobbyError(msg){
-      el("lobbyErr").style.display = msg ? "block" : "none";
-      el("lobbyErr").textContent = msg || "";
+      const le = el("lobbyErr");
+      if(!le) return;
+      le.style.display = msg ? "block" : "none";
+      le.textContent = msg || "";
     }
 
     function buildShareLink(roomId){
@@ -1463,9 +1477,6 @@
 
     function otherRole(r){ return r === "p1" ? "p2" : "p1"; }
 
-    // ---------------------------
-    // Render helpers
-    // ---------------------------
     function getQ(room){
       const q = room.questions || {};
       return {
@@ -1488,33 +1499,33 @@
       }else{
         pct = 0;
       }
-      el("progFill").style.width = pct + "%";
+      if(el("progFill")) el("progFill").style.width = pct + "%";
     }
 
     function setActiveTab(tab){
       ui.tab = tab;
 
       if(tab === "chat"){
-        el("tabChat").classList.remove("hasBell");
+        el("tabChat")?.classList.remove("hasBell");
         ui.lastChatIdSeen = client.room?.chat?.length ? client.room.chat[client.room.chat.length-1]?.id : ui.lastChatIdSeen;
       }
       renderFromRoom(client.room || {});
     }
 
     function setModeUI(room){
-      el("tabChat").classList.toggle("active", ui.tab === "chat");
-      el("tabNhie").classList.toggle("active", ui.tab === "nhie");
-      el("tabPick").classList.toggle("active", ui.tab === "pick");
-      el("tabTD").classList.toggle("active", ui.tab === "td");
+      el("tabChat")?.classList.toggle("active", ui.tab === "chat");
+      el("tabNhie")?.classList.toggle("active", ui.tab === "nhie");
+      el("tabPick")?.classList.toggle("active", ui.tab === "pick");
+      el("tabTD")?.classList.toggle("active", ui.tab === "td");
 
       const isChat = ui.tab === "chat";
-      el("chatArea").style.display = isChat ? "block" : "none";
+      if(el("chatArea")) el("chatArea").style.display = isChat ? "block" : "none";
 
-      el("nhieArea").style.display = (!isChat && room.mode === "nhie") ? "block" : "none";
-      el("pickArea").style.display = (!isChat && room.mode === "pick") ? "block" : "none";
-      el("tdArea").style.display   = (!isChat && room.mode === "td")   ? "block" : "none";
+      if(el("nhieArea")) el("nhieArea").style.display = (!isChat && room.mode === "nhie") ? "block" : "none";
+      if(el("pickArea")) el("pickArea").style.display = (!isChat && room.mode === "pick") ? "block" : "none";
+      if(el("tdArea"))   el("tdArea").style.display   = (!isChat && room.mode === "td")   ? "block" : "none";
 
-      el("bottomBar").style.display = (isChat || room.mode === "td") ? "none" : "flex";
+      if(el("bottomBar")) el("bottomBar").style.display = (isChat || room.mode === "td") ? "none" : "flex";
     }
 
     function getCurrentItem(room){
@@ -1528,27 +1539,27 @@
     function updateAvatars(room){
       const p1g = room.players?.p1?.gender || "male";
       const p2g = room.players?.p2?.gender || "male";
-      el("lobbyP1Av").src = avatarForGender(p1g);
-      el("lobbyP2Av").src = avatarForGender(p2g);
-      el("p1Av").src = avatarForGender(p1g);
-      el("p2Av").src = avatarForGender(p2g);
+      if(el("lobbyP1Av")) el("lobbyP1Av").src = avatarForGender(p1g);
+      if(el("lobbyP2Av")) el("lobbyP2Av").src = avatarForGender(p2g);
+      if(el("p1Av")) el("p1Av").src = avatarForGender(p1g);
+      if(el("p2Av")) el("p2Av").src = avatarForGender(p2g);
     }
 
     function updateNhieUI(room){
       const a1 = room.state.last.p1 || "—";
       const a2 = room.state.last.p2 || "—";
-      el("p1SelMini").textContent = (room.players.p1.name || "Player 1") + " • Selection";
-      el("p2SelMini").textContent = (room.players.p2.name || "Player 2") + " • Selection";
+      setText("p1SelMini", (room.players.p1.name || "Player 1") + " • Selection");
+      setText("p2SelMini", (room.players.p2.name || "Player 2") + " • Selection");
       setText("p1SelBox", a1); setText("p2SelBox", a2);
-      el("p1SelBox").classList.toggle("selected", a1 !== "—");
-      el("p2SelBox").classList.toggle("selected", a2 !== "—");
+      el("p1SelBox")?.classList.toggle("selected", a1 !== "—");
+      el("p2SelBox")?.classList.toggle("selected", a2 !== "—");
 
       const d1 = !!room.state.nhieAnswered.p1;
       const d2 = !!room.state.nhieAnswered.p2;
       setText("p1Badge", d1 ? "Done" : "Pending");
       setText("p2Badge", d2 ? "Done" : "Pending");
-      el("p1Badge").classList.toggle("done", d1);
-      el("p2Badge").classList.toggle("done", d2);
+      el("p1Badge")?.classList.toggle("done", d1);
+      el("p2Badge")?.classList.toggle("done", d2);
 
       const turn = room.state.nhieTurn;
       setText("nhieTurnPill", "Turn: " + (turn==="p1" ? (room.players.p1.name||"P1") : (room.players.p2.name||"P2")));
@@ -1556,19 +1567,19 @@
       const both = d1 && d2;
       if(both){
         setText("nhieStatus", "Both answered ✅ Host can tap Next.");
-        el("nhieHave").disabled = true;
-        el("nhieNever").disabled = true;
+        if(el("nhieHave")) el("nhieHave").disabled = true;
+        if(el("nhieNever")) el("nhieNever").disabled = true;
       }else{
         const tName = turn==="p1" ? (room.players.p1.name||"P1") : (room.players.p2.name||"P2");
         setText("nhieStatus", tName + " select: I Have / I Never");
         const myTurn = client.role === turn;
-        el("nhieHave").disabled = !myTurn;
-        el("nhieNever").disabled = !myTurn;
+        if(el("nhieHave")) el("nhieHave").disabled = !myTurn;
+        if(el("nhieNever")) el("nhieNever").disabled = !myTurn;
       }
 
       const sel = room.state.last[turn];
-      el("nhieHave").classList.toggle("selected", sel === "I Have");
-      el("nhieNever").classList.toggle("selected", sel === "I Never");
+      el("nhieHave")?.classList.toggle("selected", sel === "I Have");
+      el("nhieNever")?.classList.toggle("selected", sel === "I Never");
     }
 
     function updatePickUI(room){
@@ -1579,8 +1590,8 @@
       const v2 = room.state.pickLast.p2 || "—";
       setText("p1PickBox", v1);
       setText("p2PickBox", v2);
-      el("p1PickBox").classList.toggle("selected", v1 !== "—");
-      el("p2PickBox").classList.toggle("selected", v2 !== "—");
+      el("p1PickBox")?.classList.toggle("selected", v1 !== "—");
+      el("p2PickBox")?.classList.toggle("selected", v2 !== "—");
 
       const a1 = !!room.state.pickAnswered.p1;
       const a2 = !!room.state.pickAnswered.p2;
@@ -1588,21 +1599,21 @@
 
       if(both){
         setText("pickStatus", "Both answered ✅ Host can tap Next.");
-        el("opt1Btn").disabled = true;
-        el("opt2Btn").disabled = true;
+        if(el("opt1Btn")) el("opt1Btn").disabled = true;
+        if(el("opt2Btn")) el("opt2Btn").disabled = true;
       }else{
         const tName = t==="p1" ? (room.players.p1.name||"P1") : (room.players.p2.name||"P2");
         setText("pickStatus", tName + " select an option.");
         const myTurn = client.role === t;
-        el("opt1Btn").disabled = !myTurn;
-        el("opt2Btn").disabled = !myTurn;
+        if(el("opt1Btn")) el("opt1Btn").disabled = !myTurn;
+        if(el("opt2Btn")) el("opt2Btn").disabled = !myTurn;
       }
 
       const sel = room.state.pickLast[t];
-      const o1 = el("opt1Btn").textContent || "Option 1";
-      const o2 = el("opt2Btn").textContent || "Option 2";
-      el("opt1Btn").classList.toggle("selected", sel && sel !== "—" && sel === o1);
-      el("opt2Btn").classList.toggle("selected", sel && sel !== "—" && sel === o2);
+      const o1 = el("opt1Btn")?.textContent || "Option 1";
+      const o2 = el("opt2Btn")?.textContent || "Option 2";
+      el("opt1Btn")?.classList.toggle("selected", sel && sel !== "—" && sel === o1);
+      el("opt2Btn")?.classList.toggle("selected", sel && sel !== "—" && sel === o2);
     }
 
     function escapeHtml(s){
@@ -1610,7 +1621,6 @@
         .replaceAll('"',"&quot;").replaceAll("'","&#039;");
     }
 
-    // ✅ Chat render + bell when not on Chat tab
     function renderChat(room){
       const msgs = Array.isArray(room.chat) ? room.chat : [];
       const wrap = el("chatMsgs");
@@ -1620,13 +1630,13 @@
       const newIncoming = lastId && lastId !== ui.lastChatIdSeen;
 
       if(ui.tab !== "chat" && newIncoming){
-        el("tabChat").classList.add("hasBell");
+        el("tabChat")?.classList.add("hasBell");
         if(document && document.title && !document.title.startsWith("• ")){
           document.title = "• " + document.title;
         }
       }
       if(ui.tab === "chat"){
-        el("tabChat").classList.remove("hasBell");
+        el("tabChat")?.classList.remove("hasBell");
         if(document && document.title){
           document.title = document.title.replace(/^•\s*/,"");
         }
@@ -1680,11 +1690,11 @@
       wrap.scrollTop = wrap.scrollHeight;
     }
 
-    // ✅ wheel animation guard (local only)
     let lastSpinTokenLocal = null;
 
     function setBadge(type){
       const b = el("tdResultBadge");
+      if(!b) return;
       b.classList.remove("truth","dare");
       if(type === "truth"){
         b.classList.add("truth");
@@ -1699,23 +1709,21 @@
 
     function showChosenBox(room){
       const box = el("tdChosenBox");
+      if(!box) return;
       const txt = room.td?.chosenText || "";
       if(txt){
         box.style.display = "block";
-        el("tdChosenText").textContent = txt;
+        setText("tdChosenText", txt);
         const who = room.td?.chosenBy || "—";
         const t = room.td?.type || "—";
-        el("tdChosenMeta").textContent = `Type: ${String(t).toUpperCase()} • Picked by: ${who.toUpperCase()}`;
+        setText("tdChosenMeta", `Type: ${String(t).toUpperCase()} • Picked by: ${who.toUpperCase()}`);
       }else{
         box.style.display = "none";
-        el("tdChosenText").textContent = "—";
-        el("tdChosenMeta").textContent = "—";
+        setText("tdChosenText", "—");
+        setText("tdChosenMeta", "—");
       }
     }
 
-    // ---------------------------
-    // Wheel labels
-    // ---------------------------
     const WHEEL_SLICE_COUNT = 8;
     const WHEEL_DARE_INDEX = 2;
     function renderWheelLabels(){
@@ -1753,20 +1761,22 @@
       const canShuffle = (phase === "list") && (client.role === other);
       const canNext = (phase === "chosen") && (client.role === turn);
 
-      el("tdSpinBtn").disabled = !canSpin;
-      el("wheelSpinBtn").disabled = !canSpin;
-      el("tdShuffleBtn").disabled = !canShuffle;
-      el("tdNextBtn").disabled = !canNext;
+      if(el("tdSpinBtn")) el("tdSpinBtn").disabled = !canSpin;
+      if(el("wheelSpinBtn")) el("wheelSpinBtn").disabled = !canSpin;
+      if(el("tdShuffleBtn")) el("tdShuffleBtn").disabled = !canShuffle;
+      if(el("tdNextBtn")) el("tdNextBtn").disabled = !canNext;
 
       const wheel = el("wheel");
       const token = room.td.spinToken || null;
       const deg = Number(room.td.spinDeg || 0);
 
-      if(token && token !== lastSpinTokenLocal){
-        lastSpinTokenLocal = token;
-        wheel.style.transform = `rotate(${deg}deg)`;
-      }else if(!token){
-        wheel.style.transform = `rotate(0deg)`;
+      if(wheel){
+        if(token && token !== lastSpinTokenLocal){
+          lastSpinTokenLocal = token;
+          wheel.style.transform = `rotate(${deg}deg)`;
+        }else if(!token){
+          wheel.style.transform = `rotate(0deg)`;
+        }
       }
 
       if(phase === "spin"){
@@ -1788,20 +1798,22 @@
       const sample = Array.isArray(room.td.sample) ? room.td.sample : [];
       const chosenIndex = (room.td.chosenIndex ?? null);
 
-      if(phase === "spin"){
-        cardsWrap.innerHTML = `<div class="tiny">Spin ke baad yahan 10 cards dikhenge.</div>`;
-      }else{
-        if(!sample.length){
-          cardsWrap.innerHTML = `<div class="tiny">No cards found. Add more in Manage → Truth/Dare.</div>`;
+      if(cardsWrap){
+        if(phase === "spin"){
+          cardsWrap.innerHTML = `<div class="tiny">Spin ke baad yahan 10 cards dikhenge.</div>`;
         }else{
-          const otherCanClick = (phase === "list") && (client.role === other);
-          cardsWrap.innerHTML = sample.map((t,i)=> {
-            const safe = escapeHtml(String(t||""));
-            const isSel = (chosenIndex !== null && Number(chosenIndex) === i);
-            const cls = "cardBtn" + (isSel ? " selected" : "");
-            const dis = otherCanClick ? "" : "disabled";
-            return `<button class="${cls}" data-tdpick="${i}" ${dis}>${safe}</button>`;
-          }).join("");
+          if(!sample.length){
+            cardsWrap.innerHTML = `<div class="tiny">No cards found. Add more in Manage → Truth/Dare.</div>`;
+          }else{
+            const otherCanClick = (phase === "list") && (client.role === other);
+            cardsWrap.innerHTML = sample.map((t,i)=> {
+              const safe = escapeHtml(String(t||""));
+              const isSel = (chosenIndex !== null && Number(chosenIndex) === i);
+              const cls = "cardBtn" + (isSel ? " selected" : "");
+              const dis = otherCanClick ? "" : "disabled";
+              return `<button class="${cls}" data-tdpick="${i}" ${dis}>${safe}</button>`;
+            }).join("");
+          }
         }
       }
 
@@ -1812,23 +1824,22 @@
     function renderFromRoom(room){
       if(!room) return;
 
-      // lobby
       setText("lobbyRoomId", room.roomId);
       setText("lobbyP1", room.players.p1.name || "Waiting…");
       setText("lobbyP2", room.players.p2.name || "Waiting…");
       setText("lobbyRolePill", "Role: " + (client.role || "—"));
-      el("shareLink").value = buildShareLink(room.roomId);
+      if(el("shareLink")) el("shareLink").value = buildShareLink(room.roomId);
 
       updateAvatars(room);
 
       const bothJoined = !!(room.players.p1.uid && room.players.p2.uid);
-      el("startGame").disabled = !(bothJoined && client.role === "p1");
+      if(el("startGame")) el("startGame").disabled = !(bothJoined && client.role === "p1");
 
       if(room.status === "waiting"){
         setScreen("screenLobby");
-        el("lobbyHint").textContent = bothJoined
+        setText("lobbyHint", bothJoined
           ? "Both players joined ✅ Host can start the game."
-          : "Waiting for Player 2 to join…";
+          : "Waiting for Player 2 to join…");
       }
       if(room.status === "playing"){
         setScreen("screenGame");
@@ -1837,13 +1848,11 @@
       setText("gameRoomId", room.roomId);
       setText("gameMeRole", client.role || "—");
 
-      // ✅ As soon as game starts, default to Chat tab for both players
       if(room.status === "playing" && !ui.enteredPlayingOnce){
         ui.enteredPlayingOnce = true;
         ui.tab = "chat";
       }
 
-      // keep chat synced (for bell)
       renderChat(room);
 
       if(room.status !== "playing"){
@@ -1868,15 +1877,15 @@
         setText("p2Count", room.state.counts.p2 || 0);
 
         const nhieDone = room.state.nhieAnswered.p1 && room.state.nhieAnswered.p2;
-        el("scoreP1").classList.toggle("active", room.mode==="nhie" && room.state.nhieTurn==="p1" && !nhieDone);
-        el("scoreP2").classList.toggle("active", room.mode==="nhie" && room.state.nhieTurn==="p2" && !nhieDone);
-        if(room.mode!=="nhie"){ el("scoreP1").classList.remove("active"); el("scoreP2").classList.remove("active"); }
+        el("scoreP1")?.classList.toggle("active", room.mode==="nhie" && room.state.nhieTurn==="p1" && !nhieDone);
+        el("scoreP2")?.classList.toggle("active", room.mode==="nhie" && room.state.nhieTurn==="p2" && !nhieDone);
+        if(room.mode!=="nhie"){ el("scoreP1")?.classList.remove("active"); el("scoreP2")?.classList.remove("active"); }
 
         if(!item){
           setText("qText", "No questions yet.");
           setText("qMeta", "Open Manage → add questions");
-          el("opt1Btn").textContent = "Option 1";
-          el("opt2Btn").textContent = "Option 2";
+          if(el("opt1Btn")) el("opt1Btn").textContent = "Option 1";
+          if(el("opt2Btn")) el("opt2Btn").textContent = "Option 2";
           setProgress(room);
           updateNhieUI(room);
           updatePickUI(room);
@@ -1889,14 +1898,14 @@
           const qq = item.q?.trim() ? item.q.trim() : "Pick one";
           setText("qText", qq);
           setText("qMeta", `Pick One • ${room.idx+1}/${q.pick.length}`);
-          el("opt1Btn").textContent = item.o1 || "Option 1";
-          el("opt2Btn").textContent = item.o2 || "Option 2";
+          if(el("opt1Btn")) el("opt1Btn").textContent = item.o1 || "Option 1";
+          if(el("opt2Btn")) el("opt2Btn").textContent = item.o2 || "Option 2";
           setProgress(room);
           updatePickUI(room);
         }
 
-        el("next").disabled = !(client.role==="p1");
-        el("reset").disabled = !(client.role==="p1");
+        if(el("next")) el("next").disabled = !(client.role==="p1");
+        if(el("reset")) el("reset").disabled = !(client.role==="p1");
       }
 
       if(room.mode === "td"){
@@ -1909,8 +1918,8 @@
     // ---------------------------
     async function createRoomFlow(){
       showHomeError("");
-      const myName = clampName(el("myNameCreate").value, "Player 1");
-      const myGender = normGender(el("myGenderCreate").value);
+      const myName = clampName(el("myNameCreate")?.value, "Player 1");
+      const myGender = normGender(el("myGenderCreate")?.value);
       try{
         const q = deepClone(questions);
         const { roomId, role } = await RoomAPI.createRoom({
@@ -1934,9 +1943,9 @@
 
     async function joinRoomFlow(roomIdFromUrl){
       showHomeError("");
-      const roomId = cleanRoomId(roomIdFromUrl || el("roomIdJoin").value || "");
-      const myName = clampName(el("myNameJoin").value, "Player 2");
-      const myGender = normGender(el("myGenderJoin").value);
+      const roomId = cleanRoomId(roomIdFromUrl || el("roomIdJoin")?.value || "");
+      const myName = clampName(el("myNameJoin")?.value, "Player 2");
+      const myGender = normGender(el("myGenderJoin")?.value);
       if(!roomId) return showHomeError("Please enter Room code (example: AB12CD).");
 
       try{
@@ -1983,12 +1992,11 @@
           doc.state.pickTurn = "p1";
 
           doc.td = tdInit();
-          doc.chat = []; // chat starts fresh when host starts
+          doc.chat = [];
 
           return doc;
         });
 
-        // ✅ open chat first for host too
         ui.tab = "chat";
       }catch(err){
         console.error(err);
@@ -2157,9 +2165,6 @@
       });
     }
 
-    // ---------------------------
-    // Truth/Dare actions
-    // ---------------------------
     function tdPool(doc){
       const q = getQ(doc);
       return { truth: q.truth, dare: q.dare };
@@ -2295,16 +2300,14 @@
       });
     }
 
-    // ---------------------------
-    // ✅ Chat send (text + images, last 40 only)
-    // ---------------------------
     async function chatSendText(){
       showChatErr("");
       if(!client.roomId) return;
-      const text = (el("chatInput").value || "").trim();
+      const input = el("chatInput");
+      const text = (input?.value || "").trim();
       if(!text) return;
 
-      el("chatInput").value = "";
+      if(input) input.value = "";
 
       await RoomAPI.patchRoom(client.roomId, (doc) => {
         if(doc.status !== "playing") return doc;
@@ -2347,8 +2350,8 @@
           const myName = myP?.name || (client.role==="p1" ? "P1" : "P2");
           const myGender = normGender(myP?.gender || "male");
 
-          const caption = (el("chatInput").value || "").trim();
-          el("chatInput").value = "";
+          const caption = (el("chatInput")?.value || "").trim();
+          if(el("chatInput")) el("chatInput").value = "";
 
           const msg = {
             id: `${Date.now()}_${Math.random().toString(16).slice(2)}`,
@@ -2370,13 +2373,10 @@
         console.error(err);
         showChatErr(err?.message || "Image upload failed.");
       }finally{
-        el("chatFile").value = "";
+        if(el("chatFile")) el("chatFile").value = "";
       }
     }
 
-    // ---------------------------
-    // Manage Sheet
-    // ---------------------------
     function renderLists(){
       el("nhieList").innerHTML = questions.nhie.length
         ? questions.nhie.map((q,i)=>`
@@ -2416,31 +2416,31 @@
     }
 
     function openSheet(){
-      el("overlay").classList.add("show");
+      el("overlay")?.classList.add("show");
       const unlocked = localStorage.getItem("admin_unlocked_supabase")==="1";
-      el("adminLogin").style.display = unlocked ? "none" : "block";
-      el("adminPanel").style.display = unlocked ? "block" : "none";
+      if(el("adminLogin")) el("adminLogin").style.display = unlocked ? "none" : "block";
+      if(el("adminPanel")) el("adminPanel").style.display = unlocked ? "block" : "none";
       if(unlocked){
         renderLists();
         if(el("shuffleNhie")) el("shuffleNhie").checked = settings.shuffleNhie;
         if(el("shufflePick")) el("shufflePick").checked = settings.shufflePick;
       }
-      el("adminPass").value = "";
-      el("adminPass").setAttribute("readonly","readonly");
-      setTimeout(()=>el("adminPass").blur(), 0);
+      if(el("adminPass")){
+        el("adminPass").value = "";
+        el("adminPass").setAttribute("readonly","readonly");
+        setTimeout(()=>el("adminPass").blur(), 0);
+      }
     }
-    function closeSheet(){ el("overlay").classList.remove("show"); }
+    function closeSheet(){ el("overlay")?.classList.remove("show"); }
 
-    // ---------------------------
     // Wire events
-    // ---------------------------
-    el("btnCreateRoom").addEventListener("click", createRoomFlow);
-    el("btnJoinRoom").addEventListener("click", () => joinRoomFlow(""));
+    el("btnCreateRoom")?.addEventListener("click", createRoomFlow);
+    el("btnJoinRoom")?.addEventListener("click", () => joinRoomFlow(""));
 
-    el("startGame").addEventListener("click", startGameFlow);
-    el("leaveRoom").addEventListener("click", leaveRoomFlow);
+    el("startGame")?.addEventListener("click", startGameFlow);
+    el("leaveRoom")?.addEventListener("click", leaveRoomFlow);
 
-    el("copyLink").addEventListener("click", async () => {
+    el("copyLink")?.addEventListener("click", async () => {
       try{
         await navigator.clipboard.writeText(el("shareLink").value);
         el("copyLink").textContent = "Copied ✅";
@@ -2451,38 +2451,27 @@
       }
     });
 
-    // ✅ Tabs: Chat local only. Game tabs: host updates mode.
-    el("tabChat").addEventListener("click", ()=> setActiveTab("chat"));
+    el("tabChat")?.addEventListener("click", ()=> setActiveTab("chat"));
+    el("tabNhie")?.addEventListener("click", ()=> { setActiveTab("nhie"); setMode("nhie"); });
+    el("tabPick")?.addEventListener("click", ()=> { setActiveTab("pick"); setMode("pick"); });
+    el("tabTD")?.addEventListener("click", ()=> { setActiveTab("td"); setMode("td"); });
 
-    el("tabNhie").addEventListener("click", ()=>{
-      setActiveTab("nhie");
-      setMode("nhie");
-    });
-    el("tabPick").addEventListener("click", ()=>{
-      setActiveTab("pick");
-      setMode("pick");
-    });
-    el("tabTD").addEventListener("click", ()=>{
-      setActiveTab("td");
-      setMode("td");
-    });
+    el("nhieHave")?.addEventListener("click", ()=> nhieSelect("I Have"));
+    el("nhieNever")?.addEventListener("click", ()=> nhieSelect("I Never"));
 
-    el("nhieHave").addEventListener("click", ()=> nhieSelect("I Have"));
-    el("nhieNever").addEventListener("click", ()=> nhieSelect("I Never"));
+    el("opt1Btn")?.addEventListener("click", ()=> pickSelect(el("opt1Btn").textContent || "Option 1"));
+    el("opt2Btn")?.addEventListener("click", ()=> pickSelect(el("opt2Btn").textContent || "Option 2"));
 
-    el("opt1Btn").addEventListener("click", ()=> pickSelect(el("opt1Btn").textContent || "Option 1"));
-    el("opt2Btn").addEventListener("click", ()=> pickSelect(el("opt2Btn").textContent || "Option 2"));
+    el("next")?.addEventListener("click", nextQuestion);
+    el("reset")?.addEventListener("click", resetGame);
 
-    el("next").addEventListener("click", nextQuestion);
-    el("reset").addEventListener("click", resetGame);
+    el("openAdmin")?.addEventListener("click", openSheet);
+    el("closeSheet")?.addEventListener("click", closeSheet);
 
-    el("openAdmin").addEventListener("click", openSheet);
-    el("closeSheet").addEventListener("click", closeSheet);
+    el("adminPass")?.addEventListener("pointerdown", ()=> el("adminPass").removeAttribute("readonly"));
+    el("adminPass")?.addEventListener("focus", ()=> el("adminPass").removeAttribute("readonly"));
 
-    el("adminPass").addEventListener("pointerdown", ()=> el("adminPass").removeAttribute("readonly"));
-    el("adminPass").addEventListener("focus", ()=> el("adminPass").removeAttribute("readonly"));
-
-    el("unlock").addEventListener("click", ()=>{
+    el("unlock")?.addEventListener("click", ()=>{
       const pass = (el("adminPass").value || "").trim();
       if(pass === ADMIN_PASSWORD){
         localStorage.setItem("admin_unlocked_supabase","1");
@@ -2505,7 +2494,7 @@
       saveSettings();
     });
 
-    el("addNhie").addEventListener("click", ()=>{
+    el("addNhie")?.addEventListener("click", ()=>{
       const v = (el("nhieNew").value || "").trim();
       if(!v) return;
       questions.nhie.unshift(v);
@@ -2513,13 +2502,13 @@
       saveQuestions(); renderLists();
     });
 
-    el("clearNhie").addEventListener("click", ()=>{
+    el("clearNhie")?.addEventListener("click", ()=>{
       if(!confirm("Clear all NHIE questions?")) return;
       questions.nhie = [];
       saveQuestions(); renderLists();
     });
 
-    el("addPick").addEventListener("click", ()=>{
+    el("addPick")?.addEventListener("click", ()=>{
       const q = (el("pickQ").value || "").trim() || "Pick one";
       const o1 = (el("pickO1").value || "").trim();
       const o2 = (el("pickO2").value || "").trim();
@@ -2529,39 +2518,39 @@
       saveQuestions(); renderLists();
     });
 
-    el("clearPick").addEventListener("click", ()=>{
+    el("clearPick")?.addEventListener("click", ()=>{
       if(!confirm("Clear all Pick One questions?")) return;
       questions.pick = [];
       saveQuestions(); renderLists();
     });
 
-    el("addTruth").addEventListener("click", ()=>{
+    el("addTruth")?.addEventListener("click", ()=>{
       const v = (el("truthNew").value || "").trim();
       if(!v) return;
       questions.truth.unshift(v);
       el("truthNew").value="";
       saveQuestions(); renderLists();
     });
-    el("clearTruth").addEventListener("click", ()=>{
+    el("clearTruth")?.addEventListener("click", ()=>{
       if(!confirm("Clear all Truth questions?")) return;
       questions.truth = [];
       saveQuestions(); renderLists();
     });
 
-    el("addDare").addEventListener("click", ()=>{
+    el("addDare")?.addEventListener("click", ()=>{
       const v = (el("dareNew").value || "").trim();
       if(!v) return;
       questions.dare.unshift(v);
       el("dareNew").value="";
       saveQuestions(); renderLists();
     });
-    el("clearDare").addEventListener("click", ()=>{
+    el("clearDare")?.addEventListener("click", ()=>{
       if(!confirm("Clear all Dare questions?")) return;
       questions.dare = [];
       saveQuestions(); renderLists();
     });
 
-    el("loadSample").addEventListener("click", ()=>{
+    el("loadSample")?.addEventListener("click", ()=>{
       questions.nhie = deepClone(SAMPLE_Q.nhie);
       questions.pick = deepClone(SAMPLE_Q.pick);
       questions.truth = deepClone(SAMPLE_Q.truth);
@@ -2570,7 +2559,7 @@
       alert("Sample loaded ✅");
     });
 
-    el("wipeAll").addEventListener("click", ()=>{
+    el("wipeAll")?.addEventListener("click", ()=>{
       if(!confirm("Reset EVERYTHING?")) return;
       localStorage.removeItem(QKEY);
       localStorage.removeItem(SKEY);
@@ -2578,7 +2567,7 @@
       location.reload();
     });
 
-    el("overlay").addEventListener("click", (e)=>{
+    el("overlay")?.addEventListener("click", (e)=>{
       const dn = e.target?.getAttribute?.("data-del-nhie");
       const dp = e.target?.getAttribute?.("data-del-pick");
       const dt = e.target?.getAttribute?.("data-del-truth");
@@ -2602,41 +2591,36 @@
       }
     });
 
-    // TD events
-    el("tdSpinBtn").addEventListener("click", tdSpin);
-    el("wheelSpinBtn").addEventListener("click", tdSpin);
-    el("tdShuffleBtn").addEventListener("click", tdShuffleSample);
-    el("tdNextBtn").addEventListener("click", tdNextSpin);
+    el("tdSpinBtn")?.addEventListener("click", tdSpin);
+    el("wheelSpinBtn")?.addEventListener("click", tdSpin);
+    el("tdShuffleBtn")?.addEventListener("click", tdShuffleSample);
+    el("tdNextBtn")?.addEventListener("click", tdNextSpin);
 
-    el("tdCards").addEventListener("click", (e)=>{
+    el("tdCards")?.addEventListener("click", (e)=>{
       const i = e.target?.getAttribute?.("data-tdpick");
       if(i == null) return;
       tdChoose(Number(i));
     });
 
-    // Chat events
-    el("chatSendBtn").addEventListener("click", chatSendText);
-    el("chatInput").addEventListener("keydown", (e)=>{
+    el("chatSendBtn")?.addEventListener("click", chatSendText);
+    el("chatInput")?.addEventListener("keydown", (e)=>{
       if(e.key === "Enter"){
         e.preventDefault();
         chatSendText();
       }
     });
 
-    el("chatImgBtn").addEventListener("click", ()=>{
+    el("chatImgBtn")?.addEventListener("click", ()=>{
       showChatErr("");
-      el("chatFile").click();
+      el("chatFile")?.click();
     });
 
-    el("chatFile").addEventListener("change", ()=>{
+    el("chatFile")?.addEventListener("change", ()=>{
       const f = el("chatFile").files?.[0] || null;
       if(!f) return;
       chatSendImage(f);
     });
 
-    // ---------------------------
-    // Boot (Supabase anonymous auth)
-    // ---------------------------
     async function ensureAnonAuth(){
       const { data: sess } = await supabase.auth.getSession();
       if(sess?.session?.user?.id) return sess.session.user.id;
@@ -2655,14 +2639,14 @@
       const url = new URL(window.location.href);
       const roomFromUrl = cleanRoomId(url.searchParams.get("room") || "");
       if(roomFromUrl){
-        el("roomIdJoin").value = roomFromUrl;
+        if(el("roomIdJoin")) el("roomIdJoin").value = roomFromUrl;
         setText("topSub", "Room link opened. Enter your name & Join.");
-        setTimeout(()=> el("myNameJoin").focus(), 250);
+        setTimeout(()=> el("myNameJoin")?.focus(), 250);
       }
 
       try{
         client.uid = await ensureAnonAuth();
-        el("authInfo").textContent = "Connected (uid: " + client.uid.slice(0,8) + "…)";
+        setText("authInfo", "Connected (uid: " + client.uid.slice(0,8) + "…)");
       }catch(e){
         console.error(e);
         showHomeError("Auth error: " + (e?.message || "anonymous auth not enabled"));
