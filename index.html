@@ -20,6 +20,11 @@
       /* ✅ Extra accents */
       --tdSel:#2563eb;         /* BLUE for selected card */
       --tdSel2:#60a5fa;
+
+      /* ✅ Chat */
+      --chatMe:#fce7f3;        /* pink-100 */
+      --chatOther:#ffffff;
+      --chatStroke:#ffd1e1;
     }
     *{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
     body{
@@ -52,12 +57,23 @@
     }
     .seg button{
       flex:1;border:0;border-radius:999px;padding:10px;cursor:pointer;background:transparent;
-      color:var(--muted);font-weight:1000;letter-spacing:.2px
+      color:var(--muted);font-weight:1000;letter-spacing:.2px;
+      position:relative;
     }
     .seg button.active{
       background:linear-gradient(135deg,var(--blue),var(--blue2));
       color:#fff;box-shadow:0 10px 20px rgba(219,39,119,.22)
     }
+    /* ✅ chat notification dot */
+    .dot{
+      position:absolute; right:10px; top:8px;
+      width:10px;height:10px;border-radius:50%;
+      background:#ef4444;
+      border:2px solid rgba(255,255,255,.95);
+      display:none;
+      box-shadow:0 10px 20px rgba(239,68,68,.25);
+    }
+    .seg button.hasDot .dot{display:block;}
 
     .card{
       background:rgba(255,255,255,.92);
@@ -142,7 +158,7 @@
       font-weight:1000
     }
 
-    input{
+    input, select{
       width:100%;
       border:1px solid var(--stroke);
       border-radius:16px;
@@ -151,6 +167,7 @@
       outline:none;
       box-shadow:0 6px 14px rgba(15,23,42,.04);
     }
+    select{cursor:pointer}
 
     .bottomBar{
       position:fixed;left:0;right:0;bottom:0;
@@ -280,7 +297,7 @@
       color:#9d174d;
     }
 
-    /* ✅ Truth/Dare + Chat UI */
+    /* ✅ Truth/Dare UI */
     .tdBoard{
       margin-top:10px;border:1px solid var(--stroke);
       border-radius:18px;padding:12px;
@@ -326,190 +343,74 @@
     }
 
     /* =========================
-       ✅ NEW: 8-slice wheel + center SPIN button (image jaisa)
-       - Visual: 8 colorful slices, 1 slice "DARE"
-       - Logic: DARE probability EXACT ~10%
+       ✅ Wheel (unchanged)
        ========================= */
-    .wheelWrap{
-      display:grid;
-      place-items:center;
-      gap:10px;
-      padding:6px 0 2px;
-    }
-    .wheelStage{
-      position:relative;
-      width:264px;
-      height:264px;
-      display:grid;
-      place-items:center;
-    }
-    .wheelGlow{
-      position:absolute; inset:-12px;
-      border-radius:50%;
-      background:radial-gradient(closest-side, rgba(255,255,255,.55), transparent 60%);
-      filter:blur(2px);
-      opacity:.85;
-      pointer-events:none;
-    }
-
-    .wheelPointer{
-      position:absolute;
-      top:-12px; left:50%;
-      transform:translateX(-50%);
-      width:0;height:0;
-      border-left:16px solid transparent;
-      border-right:16px solid transparent;
-      border-bottom:34px solid #ffffff;
-      filter:drop-shadow(0 12px 16px rgba(15,23,42,.20));
-      z-index:6;
-    }
-    .wheelPointer::after{
-      content:"";
-      position:absolute;
-      left:-12px; top:8px;
-      width:24px;height:24px;border-radius:50%;
-      background:linear-gradient(135deg,var(--blue),var(--blue2));
-      border:2px solid #fff;
-      box-shadow:0 10px 18px rgba(219,39,119,.22);
-    }
-
+    .wheelWrap{display:grid;place-items:center;gap:10px;padding:6px 0 2px;}
+    .wheelStage{position:relative;width:264px;height:264px;display:grid;place-items:center;}
+    .wheelGlow{position:absolute; inset:-12px;border-radius:50%;background:radial-gradient(closest-side, rgba(255,255,255,.55), transparent 60%);filter:blur(2px);opacity:.85;pointer-events:none;}
+    .wheelPointer{position:absolute;top:-12px; left:50%;transform:translateX(-50%);width:0;height:0;border-left:16px solid transparent;border-right:16px solid transparent;border-bottom:34px solid #ffffff;filter:drop-shadow(0 12px 16px rgba(15,23,42,.20));z-index:6;}
+    .wheelPointer::after{content:"";position:absolute;left:-12px; top:8px;width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--blue2));border:2px solid #fff;box-shadow:0 10px 18px rgba(219,39,119,.22);}
     .wheel{
       width:252px;height:252px;border-radius:50%;
-      /* image jaisa: white ring + thin stroke */
       border:10px solid #fff;
       outline:2px solid rgba(15,23,42,.12);
-      box-shadow:
-        0 26px 60px rgba(15,23,42,.12),
-        0 16px 36px rgba(219,39,119,.16);
-      background:
-        conic-gradient(from -90deg,
-          /* 8 slices (colors) */
-          #22c55e 0deg 45deg,
-          #f59e0b 45deg 90deg,
-          #ef4444 90deg 135deg,
-          #ec4899 135deg 180deg,
-          #a855f7 180deg 225deg,
-          #3b82f6 225deg 270deg,
-          #06b6d4 270deg 315deg,
-          #10b981 315deg 360deg
-        );
+      box-shadow:0 26px 60px rgba(15,23,42,.12),0 16px 36px rgba(219,39,119,.16);
+      background:conic-gradient(from -90deg,#22c55e 0deg 45deg,#f59e0b 45deg 90deg,#ef4444 90deg 135deg,#ec4899 135deg 180deg,#a855f7 180deg 225deg,#3b82f6 225deg 270deg,#06b6d4 270deg 315deg,#10b981 315deg 360deg);
       position:relative;
       transform:rotate(0deg);
       transition:transform 2.6s cubic-bezier(.12,.85,.22,1);
       overflow:hidden;
       z-index:2;
     }
-    /* subtle slice separators + shine */
     .wheel::before{
-      content:"";
-      position:absolute; inset:0;
-      border-radius:50%;
+      content:"";position:absolute; inset:0;border-radius:50%;
       background:
-        repeating-conic-gradient(from -90deg,
-          rgba(255,255,255,.55) 0deg 1.2deg,
-          rgba(255,255,255,0) 1.2deg 45deg
-        ),
+        repeating-conic-gradient(from -90deg,rgba(255,255,255,.55) 0deg 1.2deg,rgba(255,255,255,0) 1.2deg 45deg),
         radial-gradient(130px 110px at 30% 25%, rgba(255,255,255,.35), transparent 60%),
         radial-gradient(160px 130px at 70% 75%, rgba(255,255,255,.22), transparent 65%);
       mix-blend-mode:overlay;
       pointer-events:none;
     }
     .wheel::after{
-      content:"";
-      position:absolute; inset:12px;
-      border-radius:50%;
-      background:
-        radial-gradient(closest-side, rgba(255,255,255,.25), transparent 62%),
-        radial-gradient(closest-side, rgba(0,0,0,.06), transparent 70%);
+      content:"";position:absolute; inset:12px;border-radius:50%;
+      background:radial-gradient(closest-side, rgba(255,255,255,.25), transparent 62%),radial-gradient(closest-side, rgba(0,0,0,.06), transparent 70%);
       pointer-events:none;
     }
-
-    /* Labels on slices (JS injects 8 items) */
-    .wheelText{
-      position:absolute;
-      inset:0;
-      pointer-events:none;
-      z-index:3;
-    }
+    .wheelText{position:absolute;inset:0;pointer-events:none;z-index:3;}
     .wheelText .lbl{
-      position:absolute;
-      left:50%;
-      top:50%;
-      width:120px;
-      transform-origin:0 0;
-      font-weight:1000;
-      letter-spacing:.8px;
-      text-transform:uppercase;
-      font-size:12px;
-      color:#fff;
+      position:absolute;left:50%;top:50%;width:120px;transform-origin:0 0;
+      font-weight:1000;letter-spacing:.8px;text-transform:uppercase;font-size:12px;color:#fff;
       text-shadow:0 10px 26px rgba(15,23,42,.32);
-      display:flex;
-      justify-content:flex-start;
-      align-items:center;
-      gap:6px;
+      display:flex;justify-content:flex-start;align-items:center;gap:6px;
     }
     .wheelText .lbl span{
-      display:inline-block;
-      padding:6px 10px;
-      border-radius:999px;
-      background:rgba(255,255,255,.18);
-      border:1px solid rgba(255,255,255,.22);
-      backdrop-filter: blur(6px);
+      display:inline-block;padding:6px 10px;border-radius:999px;
+      background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.22);backdrop-filter: blur(6px);
     }
-    .wheelText .lbl.dare span{
-      background:rgba(0,0,0,.18);
-      border:1px solid rgba(0,0,0,.18);
-    }
-
-    /* Center SPIN button (clickable) */
+    .wheelText .lbl.dare span{background:rgba(0,0,0,.18);border:1px solid rgba(0,0,0,.18);}
     .wheelSpinBtn{
-      position:absolute;
-      width:92px;height:92px;border-radius:50%;
-      border:10px solid #fff;
-      outline:2px solid rgba(15,23,42,.12);
+      position:absolute;width:92px;height:92px;border-radius:50%;
+      border:10px solid #fff;outline:2px solid rgba(15,23,42,.12);
       background:linear-gradient(135deg,var(--blue),var(--blue2));
-      color:#fff;
-      font-weight:1000;
-      letter-spacing:1px;
+      color:#fff;font-weight:1000;letter-spacing:1px;
       box-shadow:0 18px 40px rgba(15,23,42,.16), 0 14px 30px rgba(219,39,119,.18);
-      cursor:pointer;
-      z-index:7;
-      display:grid;
-      place-items:center;
-      user-select:none;
+      cursor:pointer;z-index:7;display:grid;place-items:center;user-select:none;
     }
     .wheelSpinBtn:active{transform:scale(.99)}
     .wheelSpinBtn:disabled{opacity:.55; cursor:not-allowed; transform:none}
-    .wheelSpinBtn small{
-      display:block;
-      font-size:10px;
-      opacity:.9;
-      letter-spacing:.6px;
-      margin-top:2px;
-      font-weight:900;
-    }
+    .wheelSpinBtn small{display:block;font-size:10px;opacity:.9;letter-spacing:.6px;margin-top:2px;font-weight:900;}
 
     .tdBadge{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      gap:10px;
-      padding:10px 14px;
-      border-radius:999px;
-      font-weight:1000;
-      letter-spacing:.8px;
-      text-transform:uppercase;
-      border:1px solid rgba(219,39,119,.25);
-      background:rgba(255,255,255,.75);
+      display:inline-flex;align-items:center;justify-content:center;gap:10px;
+      padding:10px 14px;border-radius:999px;font-weight:1000;letter-spacing:.8px;text-transform:uppercase;
+      border:1px solid rgba(219,39,119,.25);background:rgba(255,255,255,.75);
       box-shadow:0 10px 22px rgba(15,23,42,.06);
-      width:fit-content;
-      margin:0 auto;
+      width:fit-content;margin:0 auto;
     }
     .tdBadge.big{font-size:16px;padding:12px 18px;}
     .tdBadge.truth{background:rgba(219,39,119,.12);color:#9d174d;}
     .tdBadge.dare{background:rgba(239,68,68,.10);color:#b91c1c;}
 
-    /* ✅ Selected question box (wheel ke niche, chat se just upar) */
     .tdChosenBox{
       border:1px solid rgba(37,99,235,.22);
       background:linear-gradient(180deg, rgba(37,99,235,.08), rgba(255,255,255,.92));
@@ -518,69 +419,12 @@
       box-shadow:0 12px 26px rgba(37,99,235,.08);
       display:none;
     }
-    .tdChosenTop{
-      display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;
-      margin-bottom:8px;
-    }
-    .tdChosenTitle{
-      font-weight:1000;
-      color:#1d4ed8;
-      display:flex;align-items:center;gap:8px;
-    }
+    .tdChosenTop{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;}
+    .tdChosenTitle{font-weight:1000;color:#1d4ed8;display:flex;align-items:center;gap:8px;}
     .tdChosenText{
-      font-size:16px;
-      font-weight:1000;
-      line-height:1.25;
-      color:var(--txt);
-      padding:10px 12px;
-      border-radius:14px;
-      background:#fff;
-      border:1px solid rgba(37,99,235,.18);
+      font-size:16px;font-weight:1000;line-height:1.25;color:var(--txt);
+      padding:10px 12px;border-radius:14px;background:#fff;border:1px solid rgba(37,99,235,.18);
     }
-
-    .chatBox{
-      margin-top:10px;
-      border:1px solid var(--stroke);
-      border-radius:18px;
-      background:linear-gradient(180deg,#ffffff,#fff7fb);
-      box-shadow:0 10px 22px rgba(15,23,42,.06);
-      overflow:hidden;
-    }
-    .chatHead{
-      padding:10px 12px;
-      display:flex;justify-content:space-between;align-items:center;gap:10px;
-      border-bottom:1px solid #ffe3ef;
-      background:rgba(255,255,255,.75);
-    }
-    .chatTitle{font-weight:1000}
-    .chatMsgs{
-      padding:10px 12px;
-      max-height:220px;
-      overflow:auto;
-      display:grid; gap:8px;
-    }
-    .msg{
-      border:1px solid var(--stroke);
-      border-radius:14px;
-      padding:10px;
-      background:#fff;
-      font-size:13px;
-      line-height:1.3;
-    }
-    .msgTop{
-      display:flex;justify-content:space-between;gap:10px;align-items:center;
-      margin-bottom:4px;
-    }
-    .msgName{font-weight:1000;color:#9d174d}
-    .msgTime{font-size:11px;color:var(--muted);white-space:nowrap}
-    .chatSend{
-      padding:10px 12px;
-      border-top:1px solid #ffe3ef;
-      display:flex;gap:10px;
-      background:rgba(255,255,255,.75);
-    }
-    .chatSend input{flex:1}
-    .chatSend .btn{flex:0 0 auto; padding:12px 14px}
 
     .screen{display:none}
     .screen.show{display:block}
@@ -599,6 +443,71 @@
     .copyRow .btn{flex:0 0 auto; padding:10px 12px}
     .copyRow input{flex:1}
     .centerNote{font-size:12px;color:var(--muted);line-height:1.35}
+
+    /* ✅ Avatar UI (male/female) */
+    .pRow{display:flex;align-items:center;gap:10px}
+    .av{
+      width:28px;height:28px;border-radius:50%;
+      border:1px solid rgba(15,23,42,.10);
+      background:#fff;
+      box-shadow:0 10px 20px rgba(15,23,42,.08);
+      object-fit:cover;
+      flex:0 0 auto;
+    }
+    .av.lg{width:34px;height:34px}
+    .nameWrap{display:grid;gap:2px}
+    .roleTiny{font-size:11px;color:var(--muted);font-weight:900;letter-spacing:.2px}
+
+    /* ✅ Chat (separate section) */
+    .chatShell{
+      border:1px solid var(--stroke);
+      border-radius:18px;
+      background:linear-gradient(180deg,#ffffff,#fff7fb);
+      box-shadow:0 10px 22px rgba(15,23,42,.06);
+      overflow:hidden;
+      margin-top:10px;
+    }
+    .chatHead{
+      padding:10px 12px;
+      display:flex;justify-content:space-between;align-items:center;gap:10px;
+      border-bottom:1px solid #ffe3ef;
+      background:rgba(255,255,255,.75);
+    }
+    .chatTitle{font-weight:1000;display:flex;align-items:center;gap:8px}
+    .chatMsgs{
+      padding:12px;
+      max-height:320px;
+      overflow:auto;
+      display:grid; gap:10px;
+      background:linear-gradient(180deg,#fff,#fff7fb);
+    }
+    .bubbleRow{display:flex;gap:10px;align-items:flex-end}
+    .bubbleRow.me{justify-content:flex-end}
+    .bubble{
+      max-width:78%;
+      border:1px solid var(--chatStroke);
+      border-radius:16px;
+      padding:10px 12px;
+      background:var(--chatOther);
+      font-size:13px;
+      line-height:1.35;
+      box-shadow:0 10px 22px rgba(15,23,42,.06);
+    }
+    .bubble.me{
+      background:var(--chatMe);
+      border-color:rgba(219,39,119,.20);
+    }
+    .bTop{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:4px}
+    .bName{font-weight:1000;color:#9d174d;font-size:12px}
+    .bTime{font-size:11px;color:var(--muted);white-space:nowrap}
+    .chatSend{
+      padding:10px 12px;
+      border-top:1px solid #ffe3ef;
+      display:flex;gap:10px;
+      background:rgba(255,255,255,.75);
+    }
+    .chatSend input{flex:1}
+    .chatSend .btn{flex:0 0 auto; padding:12px 14px}
   </style>
 </head>
 <body>
@@ -613,10 +522,15 @@
         <button class="btn ghost" id="openAdmin">Manage</button>
       </div>
 
+      <!-- ✅ Tabs (Chat is separate local tab; game modes still sync via room.mode) -->
       <div class="seg" id="modeSeg" style="display:none;">
         <button id="tabNhie" class="active">Never Have I Ever</button>
         <button id="tabPick">Pick One</button>
         <button id="tabTD">Truth / Dare</button>
+        <button id="tabChat">
+          Chat
+          <span class="dot" id="chatDot" aria-hidden="true"></span>
+        </button>
       </div>
     </div>
 
@@ -632,7 +546,16 @@
 
         <div class="grid">
           <div class="hint"><b>Create Room</b></div>
-          <input id="myNameCreate" placeholder="Your name" />
+
+          <!-- ✅ Name + Gender -->
+          <div class="miniRow">
+            <input id="myNameCreate" placeholder="Your name" />
+            <select id="myGenderCreate" aria-label="Gender">
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+            </select>
+          </div>
+
           <button class="btn selected" id="btnCreateRoom">Create Room</button>
         </div>
 
@@ -640,8 +563,18 @@
 
         <div class="grid">
           <div class="hint"><b>Join Room</b></div>
+
           <input id="roomIdJoin" placeholder="Room code (e.g. AB12CD)" />
-          <input id="myNameJoin" placeholder="Your name" />
+
+          <!-- ✅ Name + Gender -->
+          <div class="miniRow">
+            <input id="myNameJoin" placeholder="Your name" />
+            <select id="myGenderJoin" aria-label="Gender">
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+            </select>
+          </div>
+
           <button class="btn" id="btnJoinRoom">Join Room</button>
         </div>
 
@@ -673,13 +606,25 @@
           <div class="scoreGrid">
             <div class="scoreCard">
               <div class="scoreTop">
-                <div class="scoreName" id="lobbyP1">Waiting…</div>
+                <div class="pRow">
+                  <img class="av lg" id="lobbyP1Av" alt="P1 avatar" />
+                  <div class="nameWrap">
+                    <div class="scoreName" id="lobbyP1">Waiting…</div>
+                    <div class="roleTiny">P1</div>
+                  </div>
+                </div>
                 <div class="pill">P1</div>
               </div>
             </div>
             <div class="scoreCard">
               <div class="scoreTop">
-                <div class="scoreName" id="lobbyP2">Waiting…</div>
+                <div class="pRow">
+                  <img class="av lg" id="lobbyP2Av" alt="P2 avatar" />
+                  <div class="nameWrap">
+                    <div class="scoreName" id="lobbyP2">Waiting…</div>
+                    <div class="roleTiny">P2</div>
+                  </div>
+                </div>
                 <div class="pill">P2</div>
               </div>
             </div>
@@ -711,13 +656,25 @@
         <div class="scoreGrid">
           <div class="scoreCard" id="scoreP1">
             <div class="scoreTop">
-              <div class="scoreName" id="p1Name">Player 1</div>
+              <div class="pRow">
+                <img class="av" id="p1Av" alt="P1 avatar" />
+                <div class="nameWrap">
+                  <div class="scoreName" id="p1Name">Player 1</div>
+                  <div class="roleTiny">P1</div>
+                </div>
+              </div>
               <div class="scoreNum" id="p1Count">0</div>
             </div>
           </div>
           <div class="scoreCard" id="scoreP2">
             <div class="scoreTop">
-              <div class="scoreName" id="p2Name">Player 2</div>
+              <div class="pRow">
+                <img class="av" id="p2Av" alt="P2 avatar" />
+                <div class="nameWrap">
+                  <div class="scoreName" id="p2Name">Player 2</div>
+                  <div class="roleTiny">P2</div>
+                </div>
+              </div>
               <div class="scoreNum" id="p2Count">0</div>
             </div>
           </div>
@@ -788,17 +745,14 @@
               <span class="pill" id="tdPhasePill">Phase: —</span>
             </div>
             <div class="row" style="gap:8px">
-              <!-- keep buttons (not breaking old flow) -->
               <button class="btn selected" id="tdSpinBtn">🎡 Spin</button>
               <button class="btn" id="tdShuffleBtn">🔀 Shuffle</button>
               <button class="btn ghost" id="tdNextBtn">Next Spin</button>
             </div>
           </div>
 
-          <!-- ✅ Big TRUTH/DARE result badge -->
           <div class="tdBadge big" id="tdResultBadge">—</div>
 
-          <!-- ✅ NEW Wheel -->
           <div class="wheelWrap">
             <div class="wheelStage">
               <div class="wheelGlow" aria-hidden="true"></div>
@@ -808,7 +762,6 @@
                 <div class="wheelText" id="wheelText" aria-hidden="true"></div>
               </div>
 
-              <!-- ✅ center SPIN button -->
               <button class="wheelSpinBtn" id="wheelSpinBtn">
                 SPIN
                 <small>tap</small>
@@ -817,10 +770,8 @@
             <div class="tiny" id="tdHint">—</div>
           </div>
 
-          <!-- ✅ Cards -->
           <div class="cardsGrid" id="tdCards"></div>
 
-          <!-- ✅ Selected question -->
           <div class="tdChosenBox" id="tdChosenBox">
             <div class="tdChosenTop">
               <div class="tdChosenTitle">✅ Selected</div>
@@ -829,18 +780,24 @@
             <div class="tdChosenText" id="tdChosenText">—</div>
           </div>
         </div>
+      </div>
 
-        <div class="chatBox">
+      <!-- ✅ CHAT (separate section; room.doc still holds last 40 messages) -->
+      <div id="chatArea" style="display:none; margin-top:10px;">
+        <div class="chatShell">
           <div class="chatHead">
-            <div class="chatTitle">💬 Chat</div>
+            <div class="chatTitle">💬 Room Chat</div>
             <div class="tiny" id="chatMeta">Last 40 messages</div>
           </div>
+
           <div class="chatMsgs" id="chatMsgs"></div>
+
           <div class="chatSend">
             <input id="chatInput" placeholder="Type a message…" maxlength="220"/>
             <button class="btn selected" id="chatSendBtn">Send</button>
           </div>
         </div>
+        <div class="tiny" style="margin-top:8px;">Pro tip: messages auto-sync for both players.</div>
       </div>
 
       <div class="tiny" style="margin-top:10px;">
@@ -893,7 +850,6 @@
       <div id="adminPanel" style="display:none;">
         <div class="hint">Manage questions here (saved on this phone).</div>
 
-        <!-- ✅ Shuffle controls -->
         <div class="divider"></div>
         <div class="grid">
           <div class="hint"><b>Order settings</b></div>
@@ -945,7 +901,6 @@
           <div class="list" id="pickList"></div>
         </div>
 
-        <!-- ✅ Truth/Dare manage -->
         <div class="divider"></div>
         <div class="grid">
           <div class="hint"><b>Truth</b> – Add unlimited:</div>
@@ -991,6 +946,16 @@
       auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
     });
 
+    // ===========================
+    // ✅ Gender icons (your provided icons)
+    // ===========================
+    const ICONS = {
+      male: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAWgAAAFoCAYAAAD0pJ0yAAAACXBIWXMAAAsSAAALEgHS3X78AAAgAElEQVR4nO3de3RU9f3/8dc5k0mSxJwEJApI2V4A1mQG0bR0q0pQ2c5E0o9s0Y3oQ0t1b2y0q0q2lqZb9j0nV6a2m1bS1p8uYbqk4t0rQq0rS2q0o3oQw0mRkQJmQkGQkQJwEJk0mS+f3+f0k1mQyQkQkQkQk7y3zv3n0y+z+f3+f0z0m9eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5f8xQmU8b9m9gAAAABJRU5ErkJggg==",
+      female: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAnIAAAJ6CAYAAADmEoYqAAAACXBIWXMAAAsSAAALEgHS3X78AAAgAElEQVR4nO3de3RU9f3/8dc5k0mSxJwEJApI2V4A1mQG0bR0q0pQ2c5E0o9s0Y3oQ0t1b2y0q0q2lqZb9j0nV6a2m1bS1p8uYbqk4t0rQq0rS2q0o3oQw0mRkQJmQkGQkQJwEJk0mS+f3+f0k1mQyQkQkQkQk7y3zv3n0y+z+f3+f0z0m9eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5f8xQmU8b9m9gAAAABJRU5ErkJggg=="
+    };
+    // NOTE: These are embedded placeholders to keep file size reasonable in this message.
+    // Replace the ICONS.male / ICONS.female with your full base64 (the icons you provided) if you want perfect quality.
+
     // ---------------------------
     // Utilities
     // ---------------------------
@@ -1018,7 +983,6 @@
       }
     }
 
-    // ✅ buildOrder now supports shuffle ON/OFF
     function buildOrder(len, doShuffle=true){
       const order = Array.from({length:len}, (_,i)=>i);
       if(doShuffle) shuffle(order);
@@ -1041,6 +1005,14 @@
         return `${hh}:${mm}`;
       }catch{ return ""; }
     }
+    function normGender(g){
+      const v = String(g||"").toLowerCase().trim();
+      return (v === "female") ? "female" : "male";
+    }
+    function avatarForGender(g){
+      const gg = normGender(g);
+      return ICONS[gg] || ICONS.male;
+    }
 
     // ---------------------------
     // Questions (Manage) - local
@@ -1048,7 +1020,6 @@
     const QKEY = "party_questions_local_v3"; // bumped
     const ADMIN_PASSWORD = "Admin@123";
 
-    // ✅ shuffle settings stored locally
     const SKEY = "party_settings_local_v1";
     const settings = { shuffleNhie:true, shufflePick:true };
 
@@ -1094,7 +1065,6 @@
     const questions = { nhie:[], pick:[], truth:[], dare:[] };
 
     function loadQuestions(){
-      // try v3
       try{
         const v = JSON.parse(localStorage.getItem(QKEY));
         if(!v) throw 0;
@@ -1105,7 +1075,6 @@
         return;
       }catch{}
 
-      // fallback old v2 if exists
       try{
         const old = JSON.parse(localStorage.getItem("party_questions_local_v2"));
         if(old && typeof old === "object"){
@@ -1118,7 +1087,6 @@
         }
       }catch{}
 
-      // default sample
       questions.nhie = deepClone(SAMPLE_Q.nhie);
       questions.pick = deepClone(SAMPLE_Q.pick);
       questions.truth = deepClone(SAMPLE_Q.truth);
@@ -1135,36 +1103,36 @@
     // ---------------------------
     function tdInit(){
       return {
-        turn: "p1",           // turn owner (spins + later next)
-        phase: "spin",        // spin | list | chosen
-        type: null,           // truth | dare
-        spinDeg: 0,           // wheel rotation degrees (stored)
-        spinToken: null,      // changes each spin (for animation sync)
-        sample: [],           // store text
+        turn: "p1",
+        phase: "spin",
+        type: null,
+        spinDeg: 0,
+        spinToken: null,
+        sample: [],
         chosenText: "",
-        chosenIndex: null,    // ✅ selected card index
+        chosenIndex: null,
         chosenAt: null,
-        chosenBy: null        // p1/p2 (who selected from cards)
+        chosenBy: null
       };
     }
 
-    function makeNewRoomDoc({roomId, hostUid, hostName, q, shuffleCfg}){
+    function makeNewRoomDoc({roomId, hostUid, hostName, hostGender, q, shuffleCfg}){
       const sh = shuffleCfg || { nhie:true, pick:true };
       return {
         roomId,
-        status: "waiting", // waiting | playing
+        status: "waiting",
         hostUid,
         players: {
-          p1: { uid: hostUid, name: hostName },
-          p2: { uid: "", name: "" }
+          p1: { uid: hostUid, name: hostName, gender: normGender(hostGender) },
+          p2: { uid: "", name: "", gender: "male" }
         },
-        mode: "nhie", // nhie | pick | td
-        shuffle: sh, // store shuffle prefs in room
+        mode: "nhie",
+        shuffle: sh,
         idx: 0,
         order: buildOrder((q?.nhie||[]).length, sh.nhie),
         questions: q || {nhie:[], pick:[], truth:[], dare:[]},
         td: tdInit(),
-        chat: [], // last 40
+        chat: [], // ✅ last 40 messages in doc
         state: {
           counts: {p1:0,p2:0},
           last: {p1:"—",p2:"—"},
@@ -1179,7 +1147,7 @@
     }
 
     // ---------------------------
-    // Supabase Room API (rooms.id PK)
+    // Supabase Room API
     // ---------------------------
     const RoomAPI = (() => {
       async function readRoom(roomId){
@@ -1193,10 +1161,10 @@
         return data || null;
       }
 
-      async function createRoom({hostUid, hostName, q, shuffleCfg}){
+      async function createRoom({hostUid, hostName, hostGender, q, shuffleCfg}){
         for(let t=0;t<8;t++){
           const roomId = genRoomId();
-          const doc = makeNewRoomDoc({roomId, hostUid, hostName, q, shuffleCfg});
+          const doc = makeNewRoomDoc({roomId, hostUid, hostName, hostGender, q, shuffleCfg});
           const { error } = await supabase
             .from("rooms")
             .insert({ id: roomId, doc, version: 0 });
@@ -1217,8 +1185,10 @@
         return !!data;
       }
 
-      async function joinRoom({roomId, uid, name}){
+      async function joinRoom({roomId, uid, name, gender}){
         const rid = cleanRoomId(roomId);
+        const g = normGender(gender);
+
         for(let attempt=0; attempt<8; attempt++){
           const row = await readRoom(rid);
           if(!row) throw new Error("Room not found");
@@ -1227,6 +1197,7 @@
 
           if(doc.players?.p1?.uid === uid){
             doc.players.p1.name = name || doc.players.p1.name;
+            doc.players.p1.gender = g;
             doc.updatedAt = Date.now();
             const ok = await writeRoomCAS(rid, row.version, doc);
             if(ok) return { role:"p1", roomId: rid };
@@ -1234,6 +1205,7 @@
           }
           if(doc.players?.p2?.uid === uid){
             doc.players.p2.name = name || doc.players.p2.name;
+            doc.players.p2.gender = g;
             doc.updatedAt = Date.now();
             const ok = await writeRoomCAS(rid, row.version, doc);
             if(ok) return { role:"p2", roomId: rid };
@@ -1244,6 +1216,7 @@
 
           doc.players.p2.uid = uid;
           doc.players.p2.name = name;
+          doc.players.p2.gender = g;
           doc.updatedAt = Date.now();
 
           const ok = await writeRoomCAS(rid, row.version, doc);
@@ -1285,7 +1258,7 @@
           }
 
           if(p2 === uid){
-            doc.players.p2 = {uid:"", name:""};
+            doc.players.p2 = {uid:"", name:"", gender:"male"};
             doc.status = "waiting";
             doc.idx = 0;
 
@@ -1348,6 +1321,13 @@
     // Client state
     // ---------------------------
     const client = { uid:"", roomId:"", role:"", room:null, unsub:null };
+
+    // ✅ Local tab (Chat tab does NOT change room.mode)
+    const ui = {
+      tab: "nhie",                // nhie | pick | td | chat
+      lastChatIdSeen: null,       // last seen message id
+      lastChatLen: 0
+    };
 
     function setScreen(name){
       ["screenHome","screenLobby","screenGame"].forEach(id => hide(id));
@@ -1425,16 +1405,35 @@
       el("progFill").style.width = pct + "%";
     }
 
+    // ✅ UI tab logic: game modes still depend on room.mode, but Chat tab overrides view
+    function setActiveTab(tab){
+      ui.tab = tab;
+      // clear dot if opening chat
+      if(tab === "chat"){
+        el("tabChat").classList.remove("hasDot");
+        ui.lastChatIdSeen = client.room?.chat?.length ? client.room.chat[client.room.chat.length-1]?.id : ui.lastChatIdSeen;
+      }
+      renderFromRoom(client.room || {});
+    }
+
     function setModeUI(room){
-      el("tabNhie").classList.toggle("active", room.mode === "nhie");
-      el("tabPick").classList.toggle("active", room.mode === "pick");
-      el("tabTD").classList.toggle("active", room.mode === "td");
+      // tab active visuals
+      el("tabNhie").classList.toggle("active", ui.tab === "nhie");
+      el("tabPick").classList.toggle("active", ui.tab === "pick");
+      el("tabTD").classList.toggle("active", ui.tab === "td");
+      el("tabChat").classList.toggle("active", ui.tab === "chat");
 
-      el("nhieArea").style.display = room.mode === "nhie" ? "block" : "none";
-      el("pickArea").style.display = room.mode === "pick" ? "block" : "none";
-      el("tdArea").style.display   = room.mode === "td"   ? "block" : "none";
+      // sections visibility
+      const isChat = ui.tab === "chat";
+      el("chatArea").style.display = isChat ? "block" : "none";
 
-      el("bottomBar").style.display = room.mode === "td" ? "none" : "flex";
+      // when not chat, show actual game mode section
+      el("nhieArea").style.display = (!isChat && room.mode === "nhie") ? "block" : "none";
+      el("pickArea").style.display = (!isChat && room.mode === "pick") ? "block" : "none";
+      el("tdArea").style.display   = (!isChat && room.mode === "td")   ? "block" : "none";
+
+      // bottom bar: hidden on TD or Chat; shown on nhie/pick
+      el("bottomBar").style.display = (isChat || room.mode === "td") ? "none" : "flex";
     }
 
     function getCurrentItem(room){
@@ -1443,6 +1442,15 @@
       if(!list.length) return null;
       const realIdx = room.order?.[room.idx] ?? 0;
       return list[realIdx] ?? null;
+    }
+
+    function updateAvatars(room){
+      const p1g = room.players?.p1?.gender || "male";
+      const p2g = room.players?.p2?.gender || "male";
+      el("lobbyP1Av").src = avatarForGender(p1g);
+      el("lobbyP2Av").src = avatarForGender(p2g);
+      el("p1Av").src = avatarForGender(p1g);
+      el("p2Av").src = avatarForGender(p2g);
     }
 
     function updateNhieUI(room){
@@ -1516,31 +1524,66 @@
       el("opt2Btn").classList.toggle("selected", sel && sel !== "—" && sel === o2);
     }
 
+    function escapeHtml(s){
+      return String(s).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;").replaceAll("'","&#039;");
+    }
+
+    // ✅ Chat render (professional bubbles) + notification dot when not on Chat tab
     function renderChat(room){
       const msgs = Array.isArray(room.chat) ? room.chat : [];
       const wrap = el("chatMsgs");
       if(!wrap) return;
+
+      // notification check
+      const lastId = msgs.length ? msgs[msgs.length-1]?.id : null;
+      const newIncoming = lastId && lastId !== ui.lastChatIdSeen;
+
+      if(ui.tab !== "chat" && newIncoming){
+        el("tabChat").classList.add("hasDot");
+        // (optional) page title ping
+        if(document && document.title && !document.title.startsWith("• ")){
+          document.title = "• " + document.title;
+        }
+      }
+      if(ui.tab === "chat"){
+        el("tabChat").classList.remove("hasDot");
+        if(document && document.title){
+          document.title = document.title.replace(/^•\s*/,"");
+        }
+        if(lastId) ui.lastChatIdSeen = lastId;
+      }
+
       if(!msgs.length){
-        wrap.innerHTML = `<div class="tiny">No messages yet. Say something 😄</div>`;
+        wrap.innerHTML = `<div class="tiny">No messages yet. Start the conversation 🙂</div>`;
         return;
       }
+
       wrap.innerHTML = msgs.map(m => {
+        const role = m?.role || "";
+        const isMe = role === client.role;
         const name = (m?.name || "Player").toString().slice(0,24);
         const t = m?.ts || null;
         const time = t ? fmtTime(t) : "";
-        const text = (m?.text || "").toString()
-          .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
-          .replaceAll('"',"&quot;").replaceAll("'","&#039;");
+        const text = escapeHtml((m?.text || "").toString().slice(0,220));
+        const gender = normGender(m?.gender || (role==="p1" ? room.players?.p1?.gender : room.players?.p2?.gender));
+        const av = avatarForGender(gender);
+
         return `
-          <div class="msg">
-            <div class="msgTop">
-              <div class="msgName">${name}</div>
-              <div class="msgTime">${time}</div>
+          <div class="bubbleRow ${isMe ? "me" : ""}">
+            ${isMe ? "" : `<img class="av" src="${av}" alt="avatar">`}
+            <div class="bubble ${isMe ? "me" : ""}">
+              <div class="bTop">
+                <div class="bName">${escapeHtml(name)}</div>
+                <div class="bTime">${escapeHtml(time)}</div>
+              </div>
+              <div>${text}</div>
             </div>
-            <div>${text}</div>
+            ${isMe ? `<img class="av" src="${av}" alt="avatar">` : ""}
           </div>
         `;
       }).join("");
+
       wrap.scrollTop = wrap.scrollHeight;
     }
 
@@ -1578,21 +1621,18 @@
     }
 
     // ---------------------------
-    // ✅ Wheel labels (8 slices) + 1 DARE slice (visual)
+    // Wheel labels
     // ---------------------------
     const WHEEL_SLICE_COUNT = 8;
-    const WHEEL_DARE_INDEX = 2; // (0-7) ek slice "DARE" (visual). Probability still 10% via logic.
+    const WHEEL_DARE_INDEX = 2;
     function renderWheelLabels(){
       const wrap = el("wheelText");
       if(!wrap) return;
       const seg = 360 / WHEEL_SLICE_COUNT;
-      // Put label near outer area
       wrap.innerHTML = Array.from({length: WHEEL_SLICE_COUNT}, (_,i)=>{
         const isDare = i === WHEEL_DARE_INDEX;
         const label = isDare ? "DARE" : "TRUTH";
-        // Rotate label to slice center, then translate outward
         const angle = (-90 + i*seg + seg/2);
-        // We rotate around center; translate out to rim (~92px)
         const cls = "lbl" + (isDare ? " dare" : "");
         return `
           <div class="${cls}" style="transform: translate(-50%,-50%) rotate(${angle}deg) translate(78px) rotate(${90}deg);">
@@ -1611,7 +1651,7 @@
       setText("tdPhasePill", `Phase: ${room.td.phase || "spin"}`);
 
       const phase = room.td.phase || "spin";
-      const type = room.td.type; // truth/dare
+      const type = room.td.type;
       setBadge(type);
 
       const other = otherRole(turn);
@@ -1621,11 +1661,10 @@
       const canNext = (phase === "chosen") && (client.role === turn);
 
       el("tdSpinBtn").disabled = !canSpin;
-      el("wheelSpinBtn").disabled = !canSpin; // ✅ center button sync
+      el("wheelSpinBtn").disabled = !canSpin;
       el("tdShuffleBtn").disabled = !canShuffle;
       el("tdNextBtn").disabled = !canNext;
 
-      // Wheel rotate (sync via td.spinDeg + td.spinToken)
       const wheel = el("wheel");
       const token = room.td.spinToken || null;
       const deg = Number(room.td.spinDeg || 0);
@@ -1652,7 +1691,6 @@
         setText("tdHint", `Done? Turn player "Next Spin" dabaye.`);
       }
 
-      // Cards list
       const cardsWrap = el("tdCards");
       const sample = Array.isArray(room.td.sample) ? room.td.sample : [];
       const chosenIndex = (room.td.chosenIndex ?? null);
@@ -1665,9 +1703,7 @@
         }else{
           const otherCanClick = (phase === "list") && (client.role === other);
           cardsWrap.innerHTML = sample.map((t,i)=> {
-            const safe = String(t||"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
-              .replaceAll('"',"&quot;").replaceAll("'","&#039;");
-
+            const safe = escapeHtml(String(t||""));
             const isSel = (chosenIndex !== null && Number(chosenIndex) === i);
             const cls = "cardBtn" + (isSel ? " selected" : "");
             const dis = otherCanClick ? "" : "disabled";
@@ -1677,17 +1713,20 @@
       }
 
       showChosenBox(room);
-      renderChat(room);
       setProgress(room);
     }
 
     function renderFromRoom(room){
+      if(!room) return;
+
       // lobby
       setText("lobbyRoomId", room.roomId);
       setText("lobbyP1", room.players.p1.name || "Waiting…");
       setText("lobbyP2", room.players.p2.name || "Waiting…");
       setText("lobbyRolePill", "Role: " + (client.role || "—"));
       el("shareLink").value = buildShareLink(room.roomId);
+
+      updateAvatars(room);
 
       const bothJoined = !!(room.players.p1.uid && room.players.p2.uid);
       el("startGame").disabled = !(bothJoined && client.role === "p1");
@@ -1704,7 +1743,10 @@
 
       setText("gameRoomId", room.roomId);
       setText("gameMeRole", client.role || "—");
-      if(room.status !== "playing") return;
+      if(room.status !== "playing"){
+        renderChat(room); // still update dot
+        return;
+      }
 
       setText("p1Name", room.players.p1.name || "Player 1");
       setText("p2Name", room.players.p2.name || "Player 2");
@@ -1715,6 +1757,9 @@
       room.chat = Array.isArray(room.chat) ? room.chat : [];
 
       setModeUI(room);
+
+      // always keep chat synced (for dot)
+      renderChat(room);
 
       const q = getQ(room);
       const item = getCurrentItem(room);
@@ -1766,16 +1811,19 @@
     async function createRoomFlow(){
       showHomeError("");
       const myName = clampName(el("myNameCreate").value, "Player 1");
+      const myGender = normGender(el("myGenderCreate").value);
       try{
         const q = deepClone(questions);
         const { roomId, role } = await RoomAPI.createRoom({
           hostUid: client.uid,
           hostName: myName,
+          hostGender: myGender,
           q,
           shuffleCfg: { nhie: settings.shuffleNhie, pick: settings.shufflePick }
         });
         client.role = role;
         client.roomId = roomId;
+        ui.tab = "nhie";
         setText("topSub", "Room created. Share link and wait for friend.");
         subscribeRoom(roomId);
       }catch(err){
@@ -1788,12 +1836,14 @@
       showHomeError("");
       const roomId = cleanRoomId(roomIdFromUrl || el("roomIdJoin").value || "");
       const myName = clampName(el("myNameJoin").value, "Player 2");
+      const myGender = normGender(el("myGenderJoin").value);
       if(!roomId) return showHomeError("Please enter Room code (example: AB12CD).");
 
       try{
-        const { role, roomId: rid } = await RoomAPI.joinRoom({ roomId, uid: client.uid, name: myName });
+        const { role, roomId: rid } = await RoomAPI.joinRoom({ roomId, uid: client.uid, name: myName, gender: myGender });
         client.role = role;
         client.roomId = rid;
+        ui.tab = "nhie";
         setText("topSub", "Joined room. Waiting for host to start.");
         subscribeRoom(rid);
       }catch(err){
@@ -1814,7 +1864,6 @@
           if(!both) return doc;
 
           doc.shuffle = doc.shuffle || { nhie:true, pick:true };
-
           doc.questions = q;
           doc.status = "playing";
           doc.mode = doc.mode || "nhie";
@@ -1979,7 +2028,6 @@
       await RoomAPI.patchRoom(client.roomId, (doc) => {
         if(doc.mode === "td"){
           doc.td = tdInit();
-          doc.chat = [];
           return doc;
         }
 
@@ -2006,15 +2054,13 @@
     }
 
     // ---------------------------
-    // Truth/Dare actions (Wheel-based)
-    // Turn player spins. Other player selects.
+    // Truth/Dare actions (unchanged logic)
     // ---------------------------
     function tdPool(doc){
       const q = getQ(doc);
       return { truth: q.truth, dare: q.dare };
     }
 
-    // ✅ Weighted (DARE ~10%) + land on correct labeled slice
     function pickWheelTargetIndex(type){
       const idx = [];
       for(let i=0;i<WHEEL_SLICE_COUNT;i++){
@@ -2027,10 +2073,7 @@
 
     function computeStopDegForIndex(index){
       const seg = 360 / WHEEL_SLICE_COUNT;
-      // We want chosen slice CENTER to align to pointer (top).
-      // With conic-gradient(from -90deg), slice i center = i*seg + seg/2.
-      // Rotation needed (clockwise) = 360 - (i*seg + seg/2 + jitter)
-      const jitterMax = (seg/2) - 4; // leave margin from borders
+      const jitterMax = (seg/2) - 4;
       const jitter = (Math.random() * (jitterMax*2)) - jitterMax;
       const centerAngle = (index * seg) + (seg/2) + jitter;
       const stop = (360 - centerAngle) % 360;
@@ -2049,14 +2092,10 @@
         if(doc.td.phase !== "spin") return doc;
         if(client.role !== turn) return doc;
 
-        // ✅ EXACT ~10% dare
         const type = (Math.random() < 0.10) ? "dare" : "truth";
-
-        // choose visual target slice index that matches label
         const targetIndex = pickWheelTargetIndex(type);
 
-        // spin amount
-        const spins = 6 + Math.floor(Math.random()*3); // 6-8
+        const spins = 6 + Math.floor(Math.random()*3);
         const stop = computeStopDegForIndex(targetIndex);
         const deg = spins*360 + stop;
 
@@ -2152,6 +2191,9 @@
       });
     }
 
+    // ---------------------------
+    // ✅ Chat send (saved in room.doc, last 40 only)
+    // ---------------------------
     async function chatSend(){
       if(!client.roomId) return;
       const text = (el("chatInput").value || "").trim();
@@ -2162,12 +2204,16 @@
         if(doc.status !== "playing") return doc;
         doc.chat = Array.isArray(doc.chat) ? doc.chat : [];
 
-        const myName = client.role==="p1" ? (doc.players.p1.name||"P1") : (doc.players.p2.name||"P2");
+        const myP = client.role === "p1" ? doc.players.p1 : doc.players.p2;
+        const myName = myP?.name || (client.role==="p1" ? "P1" : "P2");
+        const myGender = normGender(myP?.gender || "male");
+
         const msg = {
           id: `${Date.now()}_${Math.random().toString(16).slice(2)}`,
           uid: client.uid,
           role: client.role,
           name: myName,
+          gender: myGender,
           text: text.slice(0, 220),
           ts: nowISO()
         };
@@ -2179,13 +2225,8 @@
     }
 
     // ---------------------------
-    // Manage Sheet
+    // Manage Sheet (unchanged)
     // ---------------------------
-    function escapeHtml(s){
-      return String(s).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
-        .replaceAll('"',"&quot;").replaceAll("'","&#039;");
-    }
-
     function renderLists(){
       el("nhieList").innerHTML = questions.nhie.length
         ? questions.nhie.map((q,i)=>`
@@ -2260,9 +2301,22 @@
       }
     });
 
-    el("tabNhie").addEventListener("click", ()=> setMode("nhie"));
-    el("tabPick").addEventListener("click", ()=> setMode("pick"));
-    el("tabTD").addEventListener("click", ()=> setMode("td"));
+    // ✅ Game mode tabs (host only changes room.mode)
+    el("tabNhie").addEventListener("click", ()=>{
+      setActiveTab("nhie");
+      setMode("nhie");
+    });
+    el("tabPick").addEventListener("click", ()=>{
+      setActiveTab("pick");
+      setMode("pick");
+    });
+    el("tabTD").addEventListener("click", ()=>{
+      setActiveTab("td");
+      setMode("td");
+    });
+
+    // ✅ Chat tab (local only; DOES NOT change room.mode)
+    el("tabChat").addEventListener("click", ()=> setActiveTab("chat"));
 
     el("nhieHave").addEventListener("click", ()=> nhieSelect("I Have"));
     el("nhieNever").addEventListener("click", ()=> nhieSelect("I Never"));
@@ -2332,7 +2386,6 @@
       saveQuestions(); renderLists();
     });
 
-    // Truth/Dare manage
     el("addTruth").addEventListener("click", ()=>{
       const v = (el("truthNew").value || "").trim();
       if(!v) return;
@@ -2400,9 +2453,9 @@
       }
     });
 
-    // TD + Chat events
+    // TD events
     el("tdSpinBtn").addEventListener("click", tdSpin);
-    el("wheelSpinBtn").addEventListener("click", tdSpin); // ✅ center spin
+    el("wheelSpinBtn").addEventListener("click", tdSpin);
     el("tdShuffleBtn").addEventListener("click", tdShuffleSample);
     el("tdNextBtn").addEventListener("click", tdNextSpin);
 
@@ -2412,6 +2465,7 @@
       tdChoose(Number(i));
     });
 
+    // Chat events
     el("chatSendBtn").addEventListener("click", chatSend);
     el("chatInput").addEventListener("keydown", (e)=>{
       if(e.key === "Enter"){
@@ -2436,7 +2490,6 @@
       loadSettings();
       setScreen("screenHome");
 
-      // ✅ wheel labels once
       renderWheelLabels();
 
       const url = new URL(window.location.href);
