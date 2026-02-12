@@ -43,31 +43,43 @@
     }
     .app{width:min(520px,100%);display:grid;gap:12px;padding-bottom:96px}
 
-    /* ✅ reduced extra white space in topbar (logo height SAME) */
+    /* ✅ TOPBAR tighter */
     .topbar{
       background:rgba(255,255,255,.92);
       border:1px solid var(--stroke);
       border-radius:var(--r);
       box-shadow:var(--shadow);
-      padding:2px 6px;              /* was 4px 6px */
+      padding:0px 6px;               /* tighter */
       backdrop-filter: blur(10px);
     }
     .titleRow{
-      display:flex;justify-content:space-between;align-items:flex-start;gap:10px; /* align-start reduces vertical slack */
+      display:flex;
+      justify-content:space-between;
+      align-items:center;            /* ✅ Manage button perfectly aligned right of logo row */
+      gap:10px;
     }
-    h1{margin:0;font-size:16px;letter-spacing:.2px}
-    .sub{margin-top:4px;color:var(--muted);font-size:12px;line-height:1.3}
 
-    /* ✅ Topbar logo only (replaces "Private Room" text) */
+    /* ✅ Logo crop wrapper (removes top/bottom whitespace from PNG visually) */
+    .logoClip{
+      height:118px;                  /* ✅ reduce white space above/below */
+      overflow:hidden;
+      display:flex;
+      align-items:center;
+    }
     .topLogo{
-      height:165px;                 /* KEEP SAME */
+      height:165px;                  /* KEEP SAME IMAGE HEIGHT */
       width:auto;
       display:block;
       object-fit:contain;
+      transform: translateY(-18px) scale(1.06); /* ✅ crop top/bottom whitespace */
+      transform-origin:center;
     }
 
+    h1{margin:0;font-size:16px;letter-spacing:.2px}
+    .sub{margin-top:4px;color:var(--muted);font-size:12px;line-height:1.3}
+
     .seg{
-      display:flex;gap:8px;margin-top:3px;
+      display:flex;gap:8px;margin-top:6px;
       background:linear-gradient(180deg,#ffe4ee,#fff5f8);
       padding:6px;border-radius:999px;border:1px solid var(--stroke)
     }
@@ -142,6 +154,7 @@
       user-select:none;
       position:relative;
       overflow:hidden;
+      white-space:nowrap;
     }
     .btn:hover{filter:brightness(1.02)}
     .btn:active{transform:scale(.99)}
@@ -490,8 +503,14 @@
       border-bottom:1px solid #ffe3ef;
       background:rgba(255,255,255,.75);
     }
-    /* ✅ Chat header shows only persons (no game/room text) */
-    .chatTitle{font-weight:1000;display:flex;align-items:center;gap:8px}
+    /* ✅ Chat header now shows ONLY other person (name+icon) */
+    .chatTitle{
+      font-weight:1000;
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+
     .chatMsgs{
       padding:12px;
       max-height:360px;
@@ -515,7 +534,6 @@
       background:var(--chatMe);
       border-color:rgba(219,39,119,.20);
     }
-    /* ✅ remove name repeat inside message (keep time only) */
     .bTime{
       font-size:11px;color:var(--muted);white-space:nowrap;
       margin-top:6px;text-align:right;
@@ -538,13 +556,8 @@
       overflow:hidden;
       background:#fff;
     }
-    .imgWrap img{
-      width:100%;
-      display:block;
-    }
-    .imgHint{
-      font-size:11px;color:var(--muted);margin-top:6px
-    }
+    .imgWrap img{width:100%;display:block;}
+    .imgHint{font-size:11px;color:var(--muted);margin-top:6px}
 
     /* ✅ Custom uploaded image icon button (42x42 + 24px icon) */
     .iconBtn{
@@ -564,7 +577,7 @@
 
     <div class="topbar">
       <div class="titleRow">
-        <div>
+        <div class="logoClip">
           <img class="topLogo" src="assets/3003fd67-ad54-4e2e-a90e-bcb16878ae97.png" alt="Private Room logo" />
         </div>
         <button class="btn ghost" id="openAdmin">Manage</button>
@@ -694,142 +707,150 @@
 
     <!-- GAME -->
     <div class="card screen" id="screenGame">
-      <div class="qBox">
-        <div class="qText" id="qText">Loading…</div>
-        <div class="qMeta">
-          <span id="qMeta">—</span>
-          <div class="prog" aria-hidden="true"><i id="progFill"></i></div>
-        </div>
-      </div>
 
-      <!-- NHIE -->
-      <div id="nhieArea">
-        <div class="scoreGrid">
-          <div class="scoreCard" id="scoreP1">
-            <div class="scoreTop">
-              <div class="pRow">
-                <img class="av" id="p1Av" alt="P1 avatar" />
-                <div class="nameWrap">
-                  <div class="scoreName" id="p1Name">Player 1</div>
-                  <div class="roleTiny">P1</div>
+      <!-- ✅ Everything below is "game section" (will be hidden in Chat tab) -->
+      <div id="gameOnly">
+        <div class="qBox">
+          <div class="qText" id="qText">Loading…</div>
+          <div class="qMeta">
+            <span id="qMeta">—</span>
+            <div class="prog" aria-hidden="true"><i id="progFill"></i></div>
+          </div>
+        </div>
+
+        <!-- NHIE -->
+        <div id="nhieArea">
+          <div class="scoreGrid">
+            <div class="scoreCard" id="scoreP1">
+              <div class="scoreTop">
+                <div class="pRow">
+                  <img class="av" id="p1Av" alt="P1 avatar" />
+                  <div class="nameWrap">
+                    <div class="scoreName" id="p1Name">Player 1</div>
+                    <div class="roleTiny">P1</div>
+                  </div>
                 </div>
+                <div class="scoreNum" id="p1Count">0</div>
               </div>
-              <div class="scoreNum" id="p1Count">0</div>
             </div>
-          </div>
-          <div class="scoreCard" id="scoreP2">
-            <div class="scoreTop">
-              <div class="pRow">
-                <img class="av" id="p2Av" alt="P2 avatar" />
-                <div class="nameWrap">
-                  <div class="scoreName" id="p2Name">Player 2</div>
-                  <div class="roleTiny">P2</div>
+            <div class="scoreCard" id="scoreP2">
+              <div class="scoreTop">
+                <div class="pRow">
+                  <img class="av" id="p2Av" alt="P2 avatar" />
+                  <div class="nameWrap">
+                    <div class="scoreName" id="p2Name">Player 2</div>
+                    <div class="roleTiny">P2</div>
+                  </div>
                 </div>
+                <div class="scoreNum" id="p2Count">0</div>
               </div>
-              <div class="scoreNum" id="p2Count">0</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="nhieSelectedGrid">
-          <div class="selCard">
-            <div class="selHeader">
-              <div class="selMini" id="p1SelMini">Player 1 • Selection</div>
-              <span class="selBadge" id="p1Badge">Pending</span>
-            </div>
-            <div class="selValue" id="p1SelBox">—</div>
-          </div>
-
-          <div class="selCard">
-            <div class="selHeader">
-              <div class="selMini" id="p2SelMini">Player 2 • Selection</div>
-              <span class="selBadge" id="p2Badge">Pending</span>
-            </div>
-            <div class="selValue" id="p2SelBox">—</div>
-          </div>
-        </div>
-
-        <div class="actionBoard">
-          <div class="actionHeader">
-            <span class="pill" id="nhieTurnPill">Turn: —</span>
-            <span class="status" id="nhieStatus">Select your answer.</span>
-          </div>
-          <div class="bigRow">
-            <button class="btn" id="nhieHave">I Have</button>
-            <button class="btn" id="nhieNever">I Never</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- PICK -->
-      <div id="pickArea" style="display:none; margin-top:10px;">
-        <div class="row" style="justify-content:space-between; align-items:center;">
-          <span class="pill" id="pickTurnPill">Turn: —</span>
-          <span class="tiny" id="pickStatus">Select an option.</span>
-        </div>
-
-        <div class="row" style="margin-top:10px;">
-          <button class="btn" id="opt1Btn" style="flex:1;">Option 1</button>
-          <button class="btn" id="opt2Btn" style="flex:1;">Option 2</button>
-        </div>
-
-        <div class="pickSelectedGrid">
-          <div class="pickSelCard">
-            <div class="pickSelName" id="p1Name2">Player 1</div>
-            <div class="pickSelValue" id="p1PickBox">—</div>
-          </div>
-          <div class="pickSelCard">
-            <div class="pickSelName" id="p2Name2">Player 2</div>
-            <div class="pickSelValue" id="p2PickBox">—</div>
-          </div>
-        </div>
-
-        <div class="tiny" style="margin-top:8px;">Pick One has no score. Only selections are shown.</div>
-      </div>
-
-      <!-- TRUTH / DARE -->
-      <div id="tdArea" style="display:none; margin-top:10px;">
-        <div class="tdBoard">
-          <div class="tdTop">
-            <div class="tdWho">
-              <span class="pill" id="tdTurnPill">Turn: —</span>
-              <span class="pill" id="tdPhasePill">Phase: —</span>
-            </div>
-            <div class="row" style="gap:8px">
-              <button class="btn selected" id="tdSpinBtn">🎡 Spin</button>
-              <button class="btn" id="tdShuffleBtn">🔀 Shuffle</button>
-              <button class="btn ghost" id="tdNextBtn">Next Spin</button>
             </div>
           </div>
 
-          <div class="tdBadge big" id="tdResultBadge">—</div>
-
-          <div class="wheelWrap">
-            <div class="wheelStage">
-              <div class="wheelGlow" aria-hidden="true"></div>
-              <div class="wheelPointer" aria-hidden="true"></div>
-
-              <div class="wheel" id="wheel">
-                <div class="wheelText" id="wheelText" aria-hidden="true"></div>
+          <div class="nhieSelectedGrid">
+            <div class="selCard">
+              <div class="selHeader">
+                <div class="selMini" id="p1SelMini">Player 1 • Selection</div>
+                <span class="selBadge" id="p1Badge">Pending</span>
               </div>
-
-              <button class="wheelSpinBtn" id="wheelSpinBtn">
-                SPIN
-                <small>tap</small>
-              </button>
+              <div class="selValue" id="p1SelBox">—</div>
             </div>
-            <div class="tiny" id="tdHint">—</div>
+
+            <div class="selCard">
+              <div class="selHeader">
+                <div class="selMini" id="p2SelMini">Player 2 • Selection</div>
+                <span class="selBadge" id="p2Badge">Pending</span>
+              </div>
+              <div class="selValue" id="p2SelBox">—</div>
+            </div>
           </div>
 
-          <div class="cardsGrid" id="tdCards"></div>
-
-          <div class="tdChosenBox" id="tdChosenBox">
-            <div class="tdChosenTop">
-              <div class="tdChosenTitle">✅ Selected</div>
-              <div class="tiny" id="tdChosenMeta">—</div>
+          <div class="actionBoard">
+            <div class="actionHeader">
+              <span class="pill" id="nhieTurnPill">Turn: —</span>
+              <span class="status" id="nhieStatus">Select your answer.</span>
             </div>
-            <div class="tdChosenText" id="tdChosenText">—</div>
+            <div class="bigRow">
+              <button class="btn" id="nhieHave">I Have</button>
+              <button class="btn" id="nhieNever">I Never</button>
+            </div>
           </div>
+        </div>
+
+        <!-- PICK -->
+        <div id="pickArea" style="display:none; margin-top:10px;">
+          <div class="row" style="justify-content:space-between; align-items:center;">
+            <span class="pill" id="pickTurnPill">Turn: —</span>
+            <span class="tiny" id="pickStatus">Select an option.</span>
+          </div>
+
+          <div class="row" style="margin-top:10px;">
+            <button class="btn" id="opt1Btn" style="flex:1;">Option 1</button>
+            <button class="btn" id="opt2Btn" style="flex:1;">Option 2</button>
+          </div>
+
+          <div class="pickSelectedGrid">
+            <div class="pickSelCard">
+              <div class="pickSelName" id="p1Name2">Player 1</div>
+              <div class="pickSelValue" id="p1PickBox">—</div>
+            </div>
+            <div class="pickSelCard">
+              <div class="pickSelName" id="p2Name2">Player 2</div>
+              <div class="pickSelValue" id="p2PickBox">—</div>
+            </div>
+          </div>
+
+          <div class="tiny" style="margin-top:8px;">Pick One has no score. Only selections are shown.</div>
+        </div>
+
+        <!-- TRUTH / DARE -->
+        <div id="tdArea" style="display:none; margin-top:10px;">
+          <div class="tdBoard">
+            <div class="tdTop">
+              <div class="tdWho">
+                <span class="pill" id="tdTurnPill">Turn: —</span>
+                <span class="pill" id="tdPhasePill">Phase: —</span>
+              </div>
+              <div class="row" style="gap:8px">
+                <button class="btn selected" id="tdSpinBtn">🎡 Spin</button>
+                <button class="btn" id="tdShuffleBtn">🔀 Shuffle</button>
+                <button class="btn ghost" id="tdNextBtn">Next Spin</button>
+              </div>
+            </div>
+
+            <div class="tdBadge big" id="tdResultBadge">—</div>
+
+            <div class="wheelWrap">
+              <div class="wheelStage">
+                <div class="wheelGlow" aria-hidden="true"></div>
+                <div class="wheelPointer" aria-hidden="true"></div>
+
+                <div class="wheel" id="wheel">
+                  <div class="wheelText" id="wheelText" aria-hidden="true"></div>
+                </div>
+
+                <button class="wheelSpinBtn" id="wheelSpinBtn">
+                  SPIN
+                  <small>tap</small>
+                </button>
+              </div>
+              <div class="tiny" id="tdHint">—</div>
+            </div>
+
+            <div class="cardsGrid" id="tdCards"></div>
+
+            <div class="tdChosenBox" id="tdChosenBox">
+              <div class="tdChosenTop">
+                <div class="tdChosenTitle">✅ Selected</div>
+                <div class="tiny" id="tdChosenMeta">—</div>
+              </div>
+              <div class="tdChosenText" id="tdChosenText">—</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tiny" id="gameFooter" style="margin-top:10px;">
+          Room: <span class="mono" id="gameRoomId">—</span> • You are: <span class="mono" id="gameMeRole">—</span>
         </div>
       </div>
 
@@ -856,9 +877,6 @@
         </div>
       </div>
 
-      <div class="tiny" style="margin-top:10px;">
-        Room: <span class="mono" id="gameRoomId">—</span> • You are: <span class="mono" id="gameMeRole">—</span>
-      </div>
     </div>
 
   </div>
@@ -1531,8 +1549,14 @@
       el("tabTD")?.classList.toggle("active", ui.tab === "td");
 
       const isChat = ui.tab === "chat";
+
+      // ✅ Chat section
       if(el("chatArea")) el("chatArea").style.display = isChat ? "block" : "none";
 
+      // ✅ Hide "game section" completely while in Chat
+      if(el("gameOnly")) el("gameOnly").style.display = isChat ? "none" : "block";
+
+      // ✅ Game areas (only when not in chat)
       if(el("nhieArea")) el("nhieArea").style.display = (!isChat && room.mode === "nhie") ? "block" : "none";
       if(el("pickArea")) el("pickArea").style.display = (!isChat && room.mode === "pick") ? "block" : "none";
       if(el("tdArea"))   el("tdArea").style.display   = (!isChat && room.mode === "td")   ? "block" : "none";
@@ -1638,10 +1662,22 @@
       const wrap = el("chatMsgs");
       if(!wrap) return;
 
-      // ✅ Chat header: show only persons
-      const p1n = (room.players?.p1?.name || "P1").toString().slice(0,24);
-      const p2n = (room.players?.p2?.name || "P2").toString().slice(0,24);
-      if(el("chatTitleNames")) el("chatTitleNames").textContent = `${p1n} • ${p2n}`;
+      // ✅ Chat header: ONLY show the OTHER person's name + icon (not both)
+      const my = client.role || "p1";
+      const other = otherRole(my);
+
+      const otherP = other==="p1" ? room.players?.p1 : room.players?.p2;
+      const otherName = (otherP?.name || (other==="p1" ? "P1" : "P2")).toString().slice(0,24);
+      const otherGender = normGender(otherP?.gender || "male");
+      const otherAv = avatarForGender(otherGender);
+
+      const titleEl = el("chatTitleNames");
+      if(titleEl){
+        titleEl.innerHTML = `
+          <img class="av" src="${escapeHtml(otherAv)}" alt="avatar">
+          <span>${escapeHtml(otherName)}</span>
+        `;
+      }
 
       const lastId = msgs.length ? msgs[msgs.length-1]?.id : null;
       const newIncoming = lastId && lastId !== ui.lastChatIdSeen;
@@ -1946,10 +1982,7 @@
         client.roomId = roomId;
         ui.tab = "chat";
         ui.enteredPlayingOnce = false;
-
-        // ✅ removed: "Room created. Share link and wait for friend."
         setText("topSub", "");
-
         subscribeRoom(roomId);
       }catch(err){
         console.error(err);
@@ -1970,10 +2003,7 @@
         client.roomId = rid;
         ui.tab = "chat";
         ui.enteredPlayingOnce = false;
-
-        // ✅ keep clean (no join notification)
         setText("topSub", "");
-
         subscribeRoom(rid);
       }catch(err){
         console.error(err);
@@ -2017,7 +2047,7 @@
         });
 
         ui.tab = "chat";
-        setText("topSub", ""); // ✅ ensure no banner text
+        setText("topSub", "");
       }catch(err){
         console.error(err);
         showLobbyError(err?.message || "Cannot start");
@@ -2655,13 +2685,12 @@
       setScreen("screenHome");
 
       renderWheelLabels();
-      setText("topSub",""); // ✅ keep hidden by default
+      setText("topSub","");
 
       const url = new URL(window.location.href);
       const roomFromUrl = cleanRoomId(url.searchParams.get("room") || "");
       if(roomFromUrl){
         if(el("roomIdJoin")) el("roomIdJoin").value = roomFromUrl;
-        // (optional) keep this message; remove if you want totally clean
         setText("topSub", "Room link opened. Enter your name & Join.");
         setTimeout(()=> el("myNameJoin")?.focus(), 250);
       }
