@@ -43,36 +43,37 @@
     }
     .app{width:min(520px,100%);display:grid;gap:12px;padding-bottom:96px}
 
-    /* ✅ TOPBAR tighter */
+    /* ✅ TOPBAR (fixed logo alignment) */
     .topbar{
       background:rgba(255,255,255,.92);
       border:1px solid var(--stroke);
       border-radius:var(--r);
       box-shadow:var(--shadow);
-      padding:4px 6px;               /* tighter */
+      padding:10px 12px;              /* ✅ more balanced vertical centering */
       backdrop-filter: blur(10px);
     }
     .titleRow{
       display:flex;
       justify-content:space-between;
-      align-items:center;            /* ✅ Manage button perfectly aligned right of logo row */
-      gap:10px;
+      align-items:center;             /* ✅ perfect vertical center */
+      gap:12px;
     }
 
-    /* ✅ Logo crop wrapper (removes top/bottom whitespace from PNG visually) */
+    /* ✅ Logo alignment (no weird crop / no top-stuck look) */
     .logoClip{
-      height:118px;                  /* ✅ reduce white space above/below */
+      height:56px;                    /* ✅ matches real topbar height */
       overflow:hidden;
       display:flex;
       align-items:center;
+      padding:0 2px;                  /* ✅ slightly tighter left spacing */
     }
     .topLogo{
-      height:165px;                  /* KEEP SAME IMAGE HEIGHT */
+      height:56px;                    /* ✅ keep logo clean + centered */
       width:auto;
       display:block;
       object-fit:contain;
-      transform: translateY(-18px) scale(1.06); /* ✅ crop top/bottom whitespace */
-      transform-origin:center;
+      object-position:center 55%;     /* ✅ tiny downward nudge inside box */
+      transform:none;                 /* ✅ remove aggressive crop */
     }
 
     h1{margin:0;font-size:16px;letter-spacing:.2px}
